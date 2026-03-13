@@ -4,9 +4,9 @@ Garbage Collector is a local-first personal intelligence system that ingests not
 
 The current implementation is a localhost web app used to prove the core engine in small, frozen phases before adding richer interaction layers.
 
-## Thin slice
+## Current Build Scope
 
-This first slice intentionally includes only:
+The current live build includes:
 
 - pasted text ingestion
 - URL ingestion
@@ -22,7 +22,48 @@ This first slice intentionally includes only:
 
 This slice intentionally excludes desktop packaging, OCR-heavy PDF handling, autonomous agents, clustering, and images.
 
-## Product Direction Note
+## What This Proves
+
+This repo is useful portfolio evidence because it shows:
+
+- phased product slicing from idea to running software
+- local-first system design with mixed-source ingestion
+- retrieval architecture that evolved from storage to semantic search to grounded chat
+- clear trust boundaries, citations, and inspectable result paths
+- disciplined README, tests, and live verification instead of vague AI claims
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    UI["React + TypeScript UI<br/>library, detail, semantic search, grounded chat, related items"]
+    API["FastAPI API"]
+    DB["SQLite<br/>items + item_chunks"]
+    Files["Local file storage<br/>uploaded PDFs"]
+    Extract["Ingestion + extraction<br/>text, URL HTML, PDF text"]
+    Enrich["Metadata + conservative entities"]
+    Chunk["Chunking"]
+    Embed["Embedding adapter<br/>all-MiniLM-L6-v2"]
+    Retrieve["SQLite-backed retrieval layer<br/>semantic search + related items"]
+    Chat["Grounded chat adapter<br/>OpenAI-compatible boundary"]
+
+    UI --> API
+    API --> DB
+    API --> Files
+    API --> Extract
+    Extract --> Enrich
+    Enrich --> DB
+    Extract --> Chunk
+    Chunk --> Embed
+    Embed --> Retrieve
+    Retrieve --> DB
+    API --> Retrieve
+    API --> Chat
+    Retrieve --> Chat
+    Chat --> UI
+```
+
+## Future Interaction Layer
 
 This repository is currently building the core engine and a thin localhost web shell first.
 
@@ -90,7 +131,7 @@ Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF
 
 ![Related items demo](docs/images/related-items-demo.png)
 
-Verified working:
+## What Works Now
 
 - backend starts locally and serves the API
 - frontend starts locally through Vite
@@ -129,9 +170,11 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
+## Verification Summary
+
 Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, a live grounded-chat flow using a local fake OpenAI-compatible adapter, and a live related-items verification on the upgraded embedding base.
 
-Not built yet:
+## Not Built Yet
 
 - image ingestion
 - desktop packaging
@@ -139,7 +182,9 @@ Not built yet:
 - agents or autonomous loops
 - clustering or bespoke engines
 
-Current grounded chat limits:
+## Known Limits
+
+### Grounded chat
 
 - grounded chat is single-turn only in this phase
 - answers are built from retrieved chunks only and do not maintain conversation memory
@@ -148,7 +193,7 @@ Current grounded chat limits:
 - the model must return citation ids that map to retrieved chunks, and unknown citation ids are discarded
 - the current demo and live verification use a fake local adapter; real hosted or local model backends can be swapped in behind the same adapter boundary
 
-Current semantic retrieval limits:
+### Semantic retrieval
 
 - chunking uses fixed-size overlapping text windows rather than token-aware segmentation
 - embeddings use `sentence-transformers/all-MiniLM-L6-v2`, which produces 384-dimensional vectors
@@ -160,7 +205,7 @@ Current semantic retrieval limits:
 - this is suitable for the current small local corpus, but not intended as the final high-scale vector backend
 - the backend keeps chunking, embedding generation, and vector retrieval as separate boundaries so a future vector store can replace the current adapter cleanly
 
-Current metadata and entity extraction limits:
+### Metadata and entity extraction
 
 - extraction is intentionally conservative and explainable
 - the system prefers precision over recall, so it will miss many possible entities rather than fill the UI with noisy guesses
@@ -170,13 +215,13 @@ Current metadata and entity extraction limits:
 - places come from a small conservative allowlist rather than broad geographic inference
 - metadata and entities are stored on the item row as JSON for this phase to keep the schema simple
 
-Current URL ingestion limits:
+### URL ingestion
 
 - only simple HTTP/HTTPS HTML pages are supported
 - JavaScript-heavy pages are not supported yet
 - some real sites may still fail depending on redirects, blocking rules, or environment-specific SSL/network behavior
 
-Current PDF ingestion limits:
+### PDF ingestion
 
 - only text-based PDFs are supported
 - image-only PDFs are not supported yet
@@ -184,6 +229,26 @@ Current PDF ingestion limits:
 - tables and layout reconstruction are not included
 - some PDFs may extract imperfectly depending on how text is encoded inside the file
 - blank or effectively textless PDFs return a readable extraction error instead of being stored as usable content
+
+## Demo Script
+
+Use this short flow for a 30-60 second demo or GIF capture:
+
+1. Semantic retrieval
+   - Start on the main screen with a mixed corpus already loaded.
+   - Enter `Louisiana property insurance` in Semantic search.
+   - Show the top ranked chunk matches and click the first result to jump to the source item.
+
+2. Grounded chat with citations
+   - Enter `What have I saved about remote workflow automation?`
+   - Show the grounded answer.
+   - Highlight the citation card and click it to open the cited source item.
+
+3. Related items
+   - Select `Remote workflow systems` or `Louisiana property insurance research` in the library.
+   - Show the Related items panel in item detail.
+   - Point out the score and the `Top matching chunk:` explanation.
+   - Click one related item to open its detail view.
 
 ## SSL Fallback Note
 
