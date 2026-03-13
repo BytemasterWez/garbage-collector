@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  askGroundedQuestion,
   createItem,
   createPdfItem,
   createUrlItem,
@@ -9,13 +10,19 @@ import {
   searchSemantic
 } from "./api/items";
 import { ItemComposer } from "./components/ItemComposer";
+import { GroundedChatPanel } from "./components/GroundedChatPanel";
 import { ItemDetailPanel } from "./components/ItemDetailPanel";
 import { LibraryList } from "./components/LibraryList";
 import { PdfComposer } from "./components/PdfComposer";
 import { SearchBox } from "./components/SearchBox";
 import { SemanticSearchPanel } from "./components/SemanticSearchPanel";
 import { UrlComposer } from "./components/UrlComposer";
-import type { ItemDetail, ItemSummary, SemanticSearchResult } from "./types/items";
+import type {
+  ChatAnswerResponse,
+  ItemDetail,
+  ItemSummary,
+  SemanticSearchResult
+} from "./types/items";
 
 export default function App() {
   const [items, setItems] = useState<ItemSummary[]>([]);
@@ -29,6 +36,9 @@ export default function App() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [semanticError, setSemanticError] = useState<string | null>(null);
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatAnswer, setChatAnswer] = useState<ChatAnswerResponse | null>(null);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   useEffect(() => {
     void loadItems(query);
@@ -167,6 +177,27 @@ export default function App() {
     }
   }
 
+  async function handleGroundedQuestion(question: string): Promise<void> {
+    const cleaned = question.trim();
+    if (!cleaned) {
+      setChatError("Enter a question before asking.");
+      setChatAnswer(null);
+      return;
+    }
+
+    try {
+      setIsChatLoading(true);
+      setChatError(null);
+      const answer = await askGroundedQuestion({ question: cleaned, retrieval_limit: 5 });
+      setChatAnswer(answer);
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Failed to answer question.");
+      setChatAnswer(null);
+    } finally {
+      setIsChatLoading(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -200,6 +231,14 @@ export default function App() {
         onSearch={handleSemanticSearch}
         onSelectItem={setSelectedItemId}
         results={semanticResults}
+      />
+
+      <GroundedChatPanel
+        answer={chatAnswer}
+        errorMessage={chatError}
+        isLoading={isChatLoading}
+        onAsk={handleGroundedQuestion}
+        onSelectItem={setSelectedItemId}
       />
 
       <section className="bottom-grid">

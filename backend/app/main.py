@@ -2,7 +2,8 @@ from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import crud, schemas
+from . import crud, grounded_chat, schemas
+from .chat_adapter import ChatAdapterError, ChatAdapterNotConfiguredError
 from .db import ensure_schema, get_db
 
 
@@ -128,3 +129,39 @@ def semantic_search(
         )
         for match in matches
     ]
+
+
+@app.post("/api/chat/answer", response_model=schemas.ChatAnswerResponse)
+def answer_question(
+    payload: schemas.ChatAnswerRequest, db: Session = Depends(get_db)
+) -> schemas.ChatAnswerResponse:
+    """Answer one grounded question using retrieved source chunks only."""
+    try:
+        result = grounded_chat.answer_question(
+            db,
+            payload.question,
+            retrieval_limit=payload.retrieval_limit,
+        )
+    except ChatAdapterNotConfiguredError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except ChatAdapterError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return schemas.ChatAnswerResponse(
+        answer=result.answer,
+        citations=[
+            schemas.ChatCitation(
+                source_id=citation.source_id,
+                item_id=citation.item_id,
+                item_type=citation.item_type,
+                item_title=citation.item_title,
+                source_url=citation.source_url,
+                source_filename=citation.source_filename,
+                chunk_id=citation.chunk_id,
+                chunk_index=citation.chunk_index,
+                chunk_text=citation.chunk_text,
+                score=round(citation.score, 4),
+            )
+            for citation in result.citations
+        ],
+    )

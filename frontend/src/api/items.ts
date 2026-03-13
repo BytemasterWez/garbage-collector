@@ -3,6 +3,8 @@ import type {
   CreatePdfItemPayload,
   SemanticSearchPayload,
   SemanticSearchResult,
+  ChatAnswerPayload,
+  ChatAnswerResponse,
   CreateUrlItemPayload,
   ItemDetail,
   ItemSummary
@@ -115,4 +117,21 @@ export async function searchSemantic(
   });
 
   return handleResponse<SemanticSearchResult[]>(response);
+}
+
+export async function askGroundedQuestion(
+  payload: ChatAnswerPayload
+): Promise<ChatAnswerResponse> {
+  const response = await makeRequest(`${API_BASE_URL}/chat/answer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      question: payload.question,
+      retrieval_limit: payload.retrieval_limit ?? 5
+    })
+  });
+
+  return handleResponse<ChatAnswerResponse>(response);
 }

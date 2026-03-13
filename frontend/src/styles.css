@@ -259,6 +259,10 @@ textarea {
   margin-bottom: 20px;
 }
 
+.chat-panel {
+  margin-bottom: 20px;
+}
+
 .semantic-search-row {
   display: grid;
   gap: 12px;
@@ -301,6 +305,29 @@ textarea {
 .semantic-result-chunk {
   margin: 0;
   color: #37455b;
+}
+
+.chat-answer-card {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.chat-answer-text {
+  margin: 0;
+  padding: 16px;
+  background: #f7f9fc;
+  border-radius: 14px;
+  color: #172033;
+}
+
+.chat-citations {
+  display: grid;
+  gap: 12px;
+}
+
+.chat-citations h3 {
+  margin: 0;
 }
 
 @media (max-width: 900px) {

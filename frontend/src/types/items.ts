@@ -66,3 +66,26 @@ export type SemanticSearchResult = {
   chunk_text: string;
   score: number;
 };
+
+export type ChatAnswerPayload = {
+  question: string;
+  retrieval_limit?: number;
+};
+
+export type ChatCitation = {
+  source_id: string;
+  item_id: number;
+  item_type: "pasted_text" | "url" | "pdf";
+  item_title: string;
+  source_url: string | null;
+  source_filename: string | null;
+  chunk_id: number;
+  chunk_index: number;
+  chunk_text: string;
+  score: number;
+};
+
+export type ChatAnswerResponse = {
+  answer: string;
+  citations: ChatCitation[];
+};

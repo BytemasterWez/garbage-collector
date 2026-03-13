@@ -47,6 +47,21 @@ class SemanticSearchRequest(BaseModel):
         return cleaned
 
 
+class ChatAnswerRequest(BaseModel):
+    """Payload for grounded one-shot chat over retrieved chunks."""
+
+    question: str = Field(min_length=1)
+    retrieval_limit: int = Field(default=5, ge=1, le=10)
+
+    @field_validator("question")
+    @classmethod
+    def question_must_not_be_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Question must not be blank.")
+        return cleaned
+
+
 class ItemSummary(BaseModel):
     """Compact item shape for the library view."""
 
@@ -107,6 +122,28 @@ class SemanticSearchResult(BaseModel):
     chunk_index: int
     chunk_text: str
     score: float
+
+
+class ChatCitation(BaseModel):
+    """One grounded citation returned with the answer."""
+
+    source_id: str
+    item_id: int
+    item_type: str
+    item_title: str
+    source_url: str | None = None
+    source_filename: str | None = None
+    chunk_id: int
+    chunk_index: int
+    chunk_text: str
+    score: float
+
+
+class ChatAnswerResponse(BaseModel):
+    """Grounded one-shot answer plus citations."""
+
+    answer: str
+    citations: list[ChatCitation]
 
 
 class HealthResponse(BaseModel):

@@ -14,12 +14,13 @@ This first slice intentionally includes only:
 - chunking
 - local embeddings
 - semantic retrieval
+- grounded chat
 - local storage with SQLite
 - library/list view
 - item detail view
 - keyword search
 
-This slice intentionally excludes desktop packaging, embeddings, semantic search, chat, OCR-heavy PDF handling, and images.
+This slice intentionally excludes desktop packaging, OCR-heavy PDF handling, autonomous agents, clustering, and images.
 
 ## Product Direction Note
 
@@ -69,11 +70,16 @@ README.md
 - Phase 3: PDF ingestion for text-based PDFs with local file storage
 - Phase 4: conservative metadata and entity extraction for item detail view
 - Phase 5: chunking, local embeddings, and semantic retrieval
+- Phase 6: grounded chat over retrieved chunks with cited sources
 - Future phases: agent access, image ingestion, and a stronger desktop-style interaction shell
 
 ## Current Verified Status
 
-Thin-slice phase 5 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, and local semantic retrieval.
+Thin-slice phase 6 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, and grounded one-shot chat.
+
+## Semantic Retrieval Demo
+
+![Semantic retrieval demo](docs/images/semantic-retrieval-demo.png)
 
 Verified working:
 
@@ -99,8 +105,11 @@ Verified working:
 - search works across `pasted_text`, `url`, and `pdf` item types
 - semantic retrieval returns ranked chunk matches with scores and source item links
 - semantic retrieval has been verified through the browser UI and the live API
+- grounded chat returns an answer plus cited source chunks when an LLM adapter is configured
+- clicking a chat citation opens the related item detail view
+- grounded chat fails gracefully with a readable message when no LLM is configured
 - schema upgrade has been verified against an older SQLite database shape
-- backend test suite currently passes with 13 tests
+- backend test suite currently passes with 16 tests
 - backend-down failures show a readable message
 - malformed URLs return a readable validation error
 - unreachable URLs return a readable fetch error
@@ -109,13 +118,24 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, and a live semantic-retrieval query.
+Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, and a live grounded-chat flow using a local fake OpenAI-compatible adapter.
 
 Not built yet:
 
 - image ingestion
-- chat or analysis features
 - desktop packaging
+- multi-turn memory
+- agents or autonomous loops
+- clustering or bespoke engines
+
+Current grounded chat limits:
+
+- grounded chat is single-turn only in this phase
+- answers are built from retrieved chunks only and do not maintain conversation memory
+- one OpenAI-compatible adapter is wired for this phase through environment variables
+- if no LLM is configured, the backend returns a readable error instead of guessing
+- the model must return citation ids that map to retrieved chunks, and unknown citation ids are discarded
+- the current demo and live verification use a fake local adapter; real hosted or local model backends can be swapped in behind the same adapter boundary
 
 Current semantic retrieval limits:
 

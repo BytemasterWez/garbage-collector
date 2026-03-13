@@ -9,6 +9,8 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import crud
+from app import grounded_chat
+from app.chat_adapter import ChatCompletionResult
 from app.db import Base, ensure_schema_for_engine, get_db
 from app.main import app
 
@@ -317,3 +319,64 @@ def test_semantic_search_backfills_chunks_for_existing_items_without_index(clien
         assert crud.count_chunks_for_item(db, legacy_item.id) > 0
     finally:
         generator.close()
+
+
+def test_chat_returns_readable_error_when_model_is_not_configured(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_item(client, "Grounded note\n\nLouisiana insurance planning.")
+
+    def missing_adapter():
+        raise grounded_chat.ChatAdapterNotConfiguredError(
+            "No chat model is configured. Set GC_LLM_MODEL and restart the backend."
+        )
+
+    monkeypatch.setattr(grounded_chat, "get_default_chat_adapter", missing_adapter)
+
+    response = client.post("/api/chat/answer", json={"question": "What does this say about Louisiana?"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "No chat model is configured. Set GC_LLM_MODEL and restart the backend."
+    }
+
+
+def test_chat_returns_grounded_no_answer_when_no_chunks_match(client: TestClient) -> None:
+    response = client.post("/api/chat/answer", json={"question": "Tell me about orbital mechanics."})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "answer": "I could not find enough grounded material in your saved items to answer that question.",
+        "citations": [],
+    }
+
+
+def test_chat_returns_answer_and_citations_from_retrieved_chunks(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_item(client, "Louisiana property insurance\n\nFlood policy notes and insurer comparisons.")
+
+    class FakeChatAdapter:
+        model_name = "fake-grounded-model"
+
+        def answer(self, *, system_prompt: str, user_prompt: str) -> ChatCompletionResult:
+            assert "Louisiana property insurance" in user_prompt
+            assert '"citation_ids": ["S1", "S2"]' in system_prompt
+            return ChatCompletionResult(
+                answer="The saved material focuses on Louisiana property insurance and flood policy comparisons.",
+                citation_ids=["S1"],
+            )
+
+    monkeypatch.setattr(grounded_chat, "get_default_chat_adapter", lambda: FakeChatAdapter())
+
+    response = client.post(
+        "/api/chat/answer",
+        json={"question": "What does the saved material say about Louisiana property insurance?", "retrieval_limit": 5},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "Louisiana property insurance" in payload["answer"]
+    assert len(payload["citations"]) == 1
+    assert payload["citations"][0]["source_id"] == "S1"
+    assert payload["citations"][0]["item_title"] == "Louisiana property insurance"
