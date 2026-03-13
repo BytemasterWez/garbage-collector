@@ -109,6 +109,29 @@ def read_item(item_id: int, db: Session = Depends(get_db)) -> schemas.ItemDetail
     return build_item_detail(item)
 
 
+@app.get("/api/items/{item_id}/related", response_model=list[schemas.RelatedItemResult])
+def read_related_items(item_id: int, db: Session = Depends(get_db)) -> list[schemas.RelatedItemResult]:
+    """Return a small ranked set of related items for the selected item."""
+    try:
+        matches = crud.list_related_items(db, item_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return [
+        schemas.RelatedItemResult(
+            item_id=match["item_id"],
+            item_type=match["item_type"],
+            title=match["title"],
+            source_url=match["source_url"],
+            source_filename=match["source_filename"],
+            score=round(float(match["score"]), 4),
+            reason=match["reason"],
+            matching_chunk_preview=match["matching_chunk_preview"],
+        )
+        for match in matches
+    ]
+
+
 @app.post("/api/retrieval/search", response_model=list[schemas.SemanticSearchResult])
 def semantic_search(
     payload: schemas.SemanticSearchRequest, db: Session = Depends(get_db)

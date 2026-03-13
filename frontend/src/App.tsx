@@ -7,6 +7,7 @@ import {
   createUrlItem,
   fetchItem,
   fetchItems,
+  fetchRelatedItems,
   searchSemantic
 } from "./api/items";
 import { ItemComposer } from "./components/ItemComposer";
@@ -20,6 +21,7 @@ import { UrlComposer } from "./components/UrlComposer";
 import type {
   ChatAnswerResponse,
   ItemDetail,
+  RelatedItem,
   ItemSummary,
   SemanticSearchResult
 } from "./types/items";
@@ -36,6 +38,9 @@ export default function App() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [semanticError, setSemanticError] = useState<string | null>(null);
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
+  const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
+  const [relatedError, setRelatedError] = useState<string | null>(null);
+  const [isRelatedLoading, setIsRelatedLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatAnswer, setChatAnswer] = useState<ChatAnswerResponse | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -47,10 +52,13 @@ export default function App() {
   useEffect(() => {
     if (selectedItemId === null) {
       setSelectedItem(null);
+      setRelatedItems([]);
+      setRelatedError(null);
       return;
     }
 
     void loadItem(selectedItemId);
+    void loadRelatedItems(selectedItemId);
   }, [selectedItemId]);
 
   async function loadItems(searchQuery: string) {
@@ -88,6 +96,23 @@ export default function App() {
       setSelectedItem(null);
     } finally {
       setIsDetailLoading(false);
+    }
+  }
+
+  async function loadRelatedItems(itemId: number) {
+    try {
+      setIsRelatedLoading(true);
+      setRelatedError(null);
+      setRelatedItems([]);
+      const matches = await fetchRelatedItems(itemId);
+      setRelatedItems(matches);
+    } catch (error) {
+      setRelatedError(
+        error instanceof Error ? error.message : "Failed to load related items."
+      );
+      setRelatedItems([]);
+    } finally {
+      setIsRelatedLoading(false);
     }
   }
 
@@ -253,6 +278,10 @@ export default function App() {
           item={selectedItem}
           isLoading={isDetailLoading}
           hasError={pageError !== null}
+          relatedItems={relatedItems}
+          isRelatedLoading={isRelatedLoading}
+          relatedError={relatedError}
+          onSelectRelatedItem={setSelectedItemId}
         />
       </section>
     </main>

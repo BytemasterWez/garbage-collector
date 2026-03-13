@@ -1,9 +1,13 @@
-import type { ItemDetail } from "../types/items";
+import type { ItemDetail, RelatedItem } from "../types/items";
 
 type ItemDetailPanelProps = {
   item: ItemDetail | null;
   isLoading: boolean;
   hasError: boolean;
+  relatedItems: RelatedItem[];
+  isRelatedLoading: boolean;
+  relatedError: string | null;
+  onSelectRelatedItem: (itemId: number) => void;
 };
 
 function formatDate(value: string): string {
@@ -13,7 +17,27 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-export function ItemDetailPanel({ item, isLoading, hasError }: ItemDetailPanelProps) {
+function formatItemType(value: "pasted_text" | "url" | "pdf"): string {
+  if (value === "url") {
+    return "URL";
+  }
+
+  if (value === "pdf") {
+    return "PDF";
+  }
+
+  return "Text";
+}
+
+export function ItemDetailPanel({
+  item,
+  isLoading,
+  hasError,
+  relatedItems,
+  isRelatedLoading,
+  relatedError,
+  onSelectRelatedItem
+}: ItemDetailPanelProps) {
   const hasEntities =
     item &&
     (item.entities.people.length > 0 ||
@@ -97,6 +121,32 @@ export function ItemDetailPanel({ item, isLoading, hasError }: ItemDetailPanelPr
             ) : (
               <p className="status-message">No conservative entities were detected for this item.</p>
             )}
+          </section>
+          <section className="detail-section">
+            <h4>Related items</h4>
+            {isRelatedLoading ? <p className="status-message">Loading related items...</p> : null}
+            {relatedError ? <p className="form-error">{relatedError}</p> : null}
+            {!isRelatedLoading && !relatedError && relatedItems.length === 0 ? (
+              <p className="status-message">No related items found yet for this item.</p>
+            ) : null}
+            <div className="related-items-list">
+              {relatedItems.map((relatedItem) => (
+                <button
+                  key={relatedItem.item_id}
+                  className="related-item"
+                  onClick={() => onSelectRelatedItem(relatedItem.item_id)}
+                  type="button"
+                >
+                  <div className="semantic-result-header">
+                    <span className="library-item-title">{relatedItem.title}</span>
+                    <span className="library-item-badge">{formatItemType(relatedItem.item_type)}</span>
+                  </div>
+                  <p className="semantic-result-score">Score {relatedItem.score.toFixed(4)}</p>
+                  <p className="semantic-result-chunk">{relatedItem.matching_chunk_preview}</p>
+                  <p className="detail-meta">{relatedItem.reason}</p>
+                </button>
+              ))}
+            </div>
           </section>
           <pre className="detail-content">{item.content}</pre>
         </article>

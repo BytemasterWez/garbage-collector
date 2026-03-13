@@ -22,6 +22,17 @@ export type ItemDetail = {
   updated_at: string;
 };
 
+export type RelatedItem = {
+  item_id: number;
+  item_type: "pasted_text" | "url" | "pdf";
+  title: string;
+  source_url: string | null;
+  source_filename: string | null;
+  score: number;
+  reason: string;
+  matching_chunk_preview: string;
+};
+
 export type ItemMetadata = {
   item_type: "pasted_text" | "url" | "pdf" | string;
   word_count: number;

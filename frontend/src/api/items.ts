@@ -7,7 +7,8 @@ import type {
   ChatAnswerResponse,
   CreateUrlItemPayload,
   ItemDetail,
-  ItemSummary
+  ItemSummary,
+  RelatedItem
 } from "../types/items";
 
 const API_BASE_URL = "/api";
@@ -134,4 +135,9 @@ export async function askGroundedQuestion(
   });
 
   return handleResponse<ChatAnswerResponse>(response);
+}
+
+export async function fetchRelatedItems(itemId: number): Promise<RelatedItem[]> {
+  const response = await makeRequest(`${API_BASE_URL}/items/${itemId}/related`);
+  return handleResponse<RelatedItem[]>(response);
 }

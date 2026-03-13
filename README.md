@@ -76,7 +76,7 @@ README.md
 
 ## Current Verified Status
 
-Thin-slice phase 6 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, and grounded one-shot chat.
+Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, grounded one-shot chat, and related items.
 
 ## Semantic Retrieval Demo
 
@@ -85,6 +85,10 @@ Thin-slice phase 6 is complete for pasted text, narrow URL ingestion, narrow PDF
 ## Grounded Chat Demo
 
 ![Grounded chat demo](docs/images/grounded-chat-demo.png)
+
+## Related Items Demo
+
+![Related items demo](docs/images/related-items-demo.png)
 
 Verified working:
 
@@ -113,6 +117,8 @@ Verified working:
 - grounded chat returns an answer plus cited source chunks when an LLM adapter is configured
 - clicking a chat citation opens the cited item detail view
 - grounded chat fails gracefully with a readable message when no LLM is configured
+- related items return ranked similar items with inspectable why-related previews
+- clicking a related item opens that item detail view
 - schema upgrade has been verified against an older SQLite database shape
 - backend test suite currently passes with 20 tests
 - backend-down failures show a readable message
@@ -123,14 +129,13 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, and a live grounded-chat flow using a local fake OpenAI-compatible adapter.
+Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, a live grounded-chat flow using a local fake OpenAI-compatible adapter, and a live related-items verification on the upgraded embedding base.
 
 Not built yet:
 
 - image ingestion
 - desktop packaging
 - multi-turn memory
-- related items
 - agents or autonomous loops
 - clustering or bespoke engines
 

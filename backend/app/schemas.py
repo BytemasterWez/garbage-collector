@@ -146,6 +146,19 @@ class ChatAnswerResponse(BaseModel):
     citations: list[ChatCitation]
 
 
+class RelatedItemResult(BaseModel):
+    """One related item plus a short inspectable reason for the match."""
+
+    item_id: int
+    item_type: str
+    title: str
+    source_url: str | None = None
+    source_filename: str | None = None
+    score: float
+    reason: str
+    matching_chunk_preview: str
+
+
 class HealthResponse(BaseModel):
     """Basic health endpoint response."""
 

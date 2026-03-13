@@ -330,6 +330,23 @@ textarea {
   margin: 0;
 }
 
+.related-items-list {
+  display: grid;
+  gap: 12px;
+}
+
+.related-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+
 @media (max-width: 900px) {
   .app-header,
   .top-grid,
