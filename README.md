@@ -76,11 +76,15 @@ README.md
 
 ## Current Verified Status
 
-Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, grounded one-shot chat, and related items.
+Thin-slice phase 6 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, and grounded one-shot chat.
 
 ## Semantic Retrieval Demo
 
 ![Semantic retrieval demo](docs/images/semantic-retrieval-demo.png)
+
+## Grounded Chat Demo
+
+![Grounded chat demo](docs/images/grounded-chat-demo.png)
 
 Verified working:
 
@@ -107,10 +111,8 @@ Verified working:
 - semantic retrieval returns ranked chunk matches with scores and source item links
 - semantic retrieval has been verified through the browser UI and the live API
 - grounded chat returns an answer plus cited source chunks when an LLM adapter is configured
-- clicking a chat citation opens the related item detail view
+- clicking a chat citation opens the cited item detail view
 - grounded chat fails gracefully with a readable message when no LLM is configured
-- related items return ranked similar items with scores and short why-related previews
-- clicking a related item opens that item detail view
 - schema upgrade has been verified against an older SQLite database shape
 - backend test suite currently passes with 20 tests
 - backend-down failures show a readable message
@@ -121,13 +123,14 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, a live grounded-chat flow using a local fake OpenAI-compatible adapter, and a direct related-items verification on main.
+Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, and a live grounded-chat flow using a local fake OpenAI-compatible adapter.
 
 Not built yet:
 
 - image ingestion
 - desktop packaging
 - multi-turn memory
+- related items
 - agents or autonomous loops
 - clustering or bespoke engines
 
@@ -144,7 +147,7 @@ Current semantic retrieval limits:
 
 - chunking uses fixed-size overlapping text windows rather than token-aware segmentation
 - embeddings use `sentence-transformers/all-MiniLM-L6-v2`, which produces 384-dimensional vectors
-- the first use of the embedding model may download model files locally before chunk indexing, semantic retrieval, grounded chat, or related-items requests become ready
+- the first use of the embedding model may download model files locally before chunk indexing, semantic retrieval, or grounded chat requests become ready
 - Sentence Transformers uses the Hugging Face cache by default unless you set `SENTENCE_TRANSFORMERS_HOME` or `HF_HOME`
 - the backend logs first model load and any full chunk-embedding rebuild so the initial download and indexing work are not silent
 - this upgrade rebuilds stale chunk embeddings so older hash-based vectors are not mixed with the newer sentence-transformer vectors
