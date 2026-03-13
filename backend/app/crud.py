@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from pathlib import Path
 from uuid import uuid4
@@ -15,13 +16,20 @@ from .chunking import split_text_into_chunks
 from .db import PDF_STORAGE_DIR
 from .embeddings import EmbeddingProvider, get_default_embedding_provider
 from .models import Item, ItemChunk
-from .retrieval import ChunkRecord, ChunkSearchMatch, VectorStoreBackend, get_default_vector_store
+from .retrieval import (
+    ChunkRecord,
+    ChunkSearchMatch,
+    VectorStoreBackend,
+    cosine_similarity,
+    get_default_vector_store,
+)
 
 DEFAULT_REQUEST_HEADERS = {
     "User-Agent": "GarbageCollector/0.2 (+http://localhost)"
 }
 REQUEST_TIMEOUT_SECONDS = 10
 SEMANTIC_RESULT_LIMIT = 8
+RELATED_ITEM_LIMIT = 5
 
 # Local Windows Python installs sometimes miss certificate chain setup.
 # For this personal localhost tool, retrying once without verification is a pragmatic fallback.
@@ -63,6 +71,7 @@ PLACE_TERMS = {
     "United States",
     "England",
 }
+logger = logging.getLogger(__name__)
 
 
 def derive_title(content: str) -> str:
@@ -189,11 +198,15 @@ def parse_entities_json(item: Item) -> dict[str, list[str]]:
 
 def create_item(db: Session, content: str) -> Item:
     """Insert a new item into SQLite."""
+    provider = get_default_embedding_provider()
+    backend = get_default_vector_store()
+    backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
+
     item = Item(item_type="pasted_text", title=derive_title(content), content=content)
     enrich_item(item, item_type="pasted_text", content=content)
     db.add(item)
     db.flush()
-    sync_item_chunks(db, item)
+    sync_item_chunks(db, item, embedding_provider=provider, vector_store=backend)
     db.commit()
     db.refresh(item)
     return item
@@ -270,6 +283,9 @@ def create_url_item(db: Session, url: str) -> Item:
     """Fetch a URL, extract simple text, and store it as a library item."""
     normalized_url = normalize_url(url)
     title, content = fetch_url_content(normalized_url)
+    provider = get_default_embedding_provider()
+    backend = get_default_vector_store()
+    backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
 
     item = Item(
         item_type="url",
@@ -280,7 +296,7 @@ def create_url_item(db: Session, url: str) -> Item:
     enrich_item(item, item_type="url", content=content, source_url=normalized_url)
     db.add(item)
     db.flush()
-    sync_item_chunks(db, item)
+    sync_item_chunks(db, item, embedding_provider=provider, vector_store=backend)
     db.commit()
     db.refresh(item)
     return item
@@ -330,6 +346,9 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 def create_pdf_item(db: Session, filename: str, file_bytes: bytes) -> Item:
     """Save the original PDF locally, extract text, and create a library item."""
     normalized_filename = normalize_pdf_filename(filename)
+    provider = get_default_embedding_provider()
+    backend = get_default_vector_store()
+    backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
 
     if not file_bytes:
         raise ValueError("The uploaded PDF was empty.")
@@ -360,7 +379,7 @@ def create_pdf_item(db: Session, filename: str, file_bytes: bytes) -> Item:
     )
     db.add(item)
     db.flush()
-    sync_item_chunks(db, item)
+    sync_item_chunks(db, item, embedding_provider=provider, vector_store=backend)
     db.commit()
     db.refresh(item)
     return item
@@ -411,20 +430,63 @@ def backfill_missing_item_chunks(
     embedding_provider: EmbeddingProvider | None = None,
     vector_store: VectorStoreBackend | None = None,
 ) -> None:
-    """Create chunks for older items that predate the retrieval layer."""
-    chunked_item_ids = set(db.scalars(select(ItemChunk.item_id).distinct()))
+    """Rebuild missing or stale chunk embeddings so one model is used consistently."""
+    provider = embedding_provider or get_default_embedding_provider()
+    backend = vector_store or get_default_vector_store()
     items = db.scalars(select(Item).order_by(Item.id.asc())).all()
+    stale_items = [item for item in items if item_needs_chunk_rebuild(db, item, provider)]
 
-    for item in items:
-        if item.id not in chunked_item_ids:
-            sync_item_chunks(
-                db,
-                item,
-                embedding_provider=embedding_provider,
-                vector_store=vector_store,
-            )
+    if not stale_items:
+        return
+
+    logger.warning(
+        "Rebuilding chunk embeddings for %s items using model '%s'.",
+        len(stale_items),
+        provider.model_name,
+    )
+
+    for item in stale_items:
+        sync_item_chunks(
+            db,
+            item,
+            embedding_provider=provider,
+            vector_store=backend,
+        )
 
     db.commit()
+    logger.info(
+        "Finished rebuilding chunk embeddings for %s items using model '%s'.",
+        len(stale_items),
+        provider.model_name,
+    )
+
+
+def item_needs_chunk_rebuild(db: Session, item: Item, provider: EmbeddingProvider) -> bool:
+    """Detect stale vectors so old hash embeddings never mix with the upgraded model."""
+    existing_chunks = db.scalars(
+        select(ItemChunk).where(ItemChunk.item_id == item.id).order_by(ItemChunk.chunk_index.asc())
+    ).all()
+    expected_chunk_count = len(build_chunk_records(item.content))
+
+    if not existing_chunks:
+        return expected_chunk_count > 0
+
+    if len(existing_chunks) != expected_chunk_count:
+        return True
+
+    for chunk in existing_chunks:
+        if chunk.embedding_model != provider.model_name:
+            return True
+
+        try:
+            vector = json.loads(chunk.embedding_vector_json)
+        except json.JSONDecodeError:
+            return True
+
+        if not isinstance(vector, list) or len(vector) != provider.vector_dimensions:
+            return True
+
+    return False
 
 
 def semantic_search(
@@ -442,6 +504,71 @@ def semantic_search(
     backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
     query_vector = provider.embed_text(query)
     return backend.search(db, query_vector=query_vector, limit=limit)
+
+
+def list_related_items(
+    db: Session,
+    item_id: int,
+    limit: int = RELATED_ITEM_LIMIT,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: VectorStoreBackend | None = None,
+) -> list[dict[str, object]]:
+    """Find similar items by comparing the selected item's chunks to other item chunks."""
+    provider = embedding_provider or get_default_embedding_provider()
+    backend = vector_store or get_default_vector_store()
+    backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
+
+    source_item = get_item(db, item_id)
+    if source_item is None:
+        raise ValueError("Item not found.")
+
+    source_chunks = db.scalars(
+        select(ItemChunk).where(ItemChunk.item_id == item_id).order_by(ItemChunk.chunk_index.asc())
+    ).all()
+    if not source_chunks:
+        return []
+
+    other_rows = db.execute(
+        select(ItemChunk, Item)
+        .join(Item, ItemChunk.item_id == Item.id)
+        .where(ItemChunk.item_id != item_id)
+        .order_by(Item.created_at.desc())
+    ).all()
+
+    best_matches: dict[int, dict[str, object]] = {}
+
+    for source_chunk in source_chunks:
+        source_vector = json.loads(source_chunk.embedding_vector_json)
+
+        for related_chunk, related_item in other_rows:
+            related_vector = json.loads(related_chunk.embedding_vector_json)
+            score = cosine_similarity(source_vector, related_vector)
+            if score <= 0:
+                continue
+
+            current_best = best_matches.get(related_item.id)
+            if current_best is not None and score <= float(current_best["score"]):
+                continue
+
+            preview = related_chunk.content_preview or build_preview(related_chunk.content, max_length=160)
+            best_matches[related_item.id] = {
+                "item_id": related_item.id,
+                "item_type": related_item.item_type,
+                "title": related_item.title,
+                "source_url": related_item.source_url,
+                "source_filename": related_item.source_filename,
+                "score": score,
+                "reason": f"Top matching chunk: {preview}",
+                "matching_chunk_preview": preview,
+            }
+
+    ranked_matches = sorted(
+        best_matches.values(),
+        key=lambda match: float(match["score"]),
+        reverse=True,
+    )
+    return ranked_matches[:limit]
 
 
 def list_items(db: Session, query: str | None = None) -> list[Item]:

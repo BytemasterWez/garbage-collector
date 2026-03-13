@@ -12,7 +12,7 @@ This first slice intentionally includes only:
 - URL ingestion
 - PDF ingestion
 - chunking
-- local embeddings
+- local sentence-transformer embeddings
 - semantic retrieval
 - grounded chat
 - local storage with SQLite
@@ -71,11 +71,12 @@ README.md
 - Phase 4: conservative metadata and entity extraction for item detail view
 - Phase 5: chunking, local embeddings, and semantic retrieval
 - Phase 6: grounded chat over retrieved chunks with cited sources
+- Phase 7: related items with simple why-related previews
 - Future phases: agent access, image ingestion, and a stronger desktop-style interaction shell
 
 ## Current Verified Status
 
-Thin-slice phase 6 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, and grounded one-shot chat.
+Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, grounded one-shot chat, and related items.
 
 ## Semantic Retrieval Demo
 
@@ -93,7 +94,7 @@ Verified working:
 - extracted metadata persists for `pasted_text`, `url`, and `pdf` items
 - extracted entities persist for `pasted_text`, `url`, and `pdf` items
 - chunk rows persist for `pasted_text`, `url`, and `pdf` items
-- local embeddings persist for chunk rows
+- local sentence-transformer embeddings persist for chunk rows
 - library refreshes after create
 - the newly created item auto-selects
 - the detail panel updates for the selected item
@@ -108,8 +109,10 @@ Verified working:
 - grounded chat returns an answer plus cited source chunks when an LLM adapter is configured
 - clicking a chat citation opens the related item detail view
 - grounded chat fails gracefully with a readable message when no LLM is configured
+- related items return ranked similar items with scores and short why-related previews
+- clicking a related item opens that item detail view
 - schema upgrade has been verified against an older SQLite database shape
-- backend test suite currently passes with 16 tests
+- backend test suite currently passes with 20 tests
 - backend-down failures show a readable message
 - malformed URLs return a readable validation error
 - unreachable URLs return a readable fetch error
@@ -118,7 +121,7 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, and a live grounded-chat flow using a local fake OpenAI-compatible adapter.
+Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, a live grounded-chat flow using a local fake OpenAI-compatible adapter, and a direct related-items verification on main.
 
 Not built yet:
 
@@ -140,7 +143,11 @@ Current grounded chat limits:
 Current semantic retrieval limits:
 
 - chunking uses fixed-size overlapping text windows rather than token-aware segmentation
-- embeddings are local deterministic hash vectors, not model-based semantic embeddings
+- embeddings use `sentence-transformers/all-MiniLM-L6-v2`, which produces 384-dimensional vectors
+- the first use of the embedding model may download model files locally before chunk indexing, semantic retrieval, grounded chat, or related-items requests become ready
+- Sentence Transformers uses the Hugging Face cache by default unless you set `SENTENCE_TRANSFORMERS_HOME` or `HF_HOME`
+- the backend logs first model load and any full chunk-embedding rebuild so the initial download and indexing work are not silent
+- this upgrade rebuilds stale chunk embeddings so older hash-based vectors are not mixed with the newer sentence-transformer vectors
 - retrieval currently scores chunk vectors in Python over SQLite-backed JSON vectors
 - this is suitable for the current small local corpus, but not intended as the final high-scale vector backend
 - the backend keeps chunking, embedding generation, and vector retrieval as separate boundaries so a future vector store can replace the current adapter cleanly
@@ -190,6 +197,10 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 The API will run on `http://127.0.0.1:8000`.
+
+On the first backend run that needs to create or rebuild chunk embeddings, the backend may spend extra time downloading and loading the embedding model before that request finishes. That model cache is kept locally by Sentence Transformers / Hugging Face.
+
+On Windows, Hugging Face may also warn that its cache cannot use symlinks unless Developer Mode is enabled. Caching still works in that case, but it may use more disk space.
 
 ## Run the frontend
 

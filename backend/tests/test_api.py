@@ -1,3 +1,4 @@
+import json
 from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
@@ -13,6 +14,40 @@ from app import grounded_chat
 from app.chat_adapter import ChatCompletionResult
 from app.db import Base, ensure_schema_for_engine, get_db
 from app.main import app
+
+
+class FakeEmbeddingProvider:
+    """Fast deterministic provider so tests stay local and do not download models."""
+
+    model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    vector_dimensions = 384
+
+    def embed_text(self, text: str) -> list[float]:
+        return self.embed_texts([text])[0]
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        vectors: list[list[float]] = []
+        keywords = ("louisiana", "insurance", "property", "remote", "workflow", "automation", "flood")
+
+        for text in texts:
+            lowered = text.lower()
+            vector = [0.0] * self.vector_dimensions
+            for index, keyword in enumerate(keywords):
+                vector[index] = float(lowered.count(keyword))
+
+            magnitude = sum(value * value for value in vector) ** 0.5
+            if magnitude:
+                vector = [value / magnitude for value in vector]
+
+            vectors.append(vector)
+
+        return vectors
+
+
+@pytest.fixture(autouse=True)
+def fake_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep tests fast by replacing the real sentence-transformer provider."""
+    monkeypatch.setattr(crud, "get_default_embedding_provider", lambda: FakeEmbeddingProvider())
 
 
 @pytest.fixture()
@@ -380,3 +415,88 @@ def test_chat_returns_answer_and_citations_from_retrieved_chunks(
     assert len(payload["citations"]) == 1
     assert payload["citations"][0]["source_id"] == "S1"
     assert payload["citations"][0]["item_title"] == "Louisiana property insurance"
+
+
+def test_related_items_returns_ranked_similar_items_without_self_match(client: TestClient) -> None:
+    selected = create_item(
+        client,
+        "Louisiana property insurance\n\nFlood policy notes and insurer comparisons.",
+    )
+    strongest_match = create_item(
+        client,
+        "Louisiana flood insurance\n\nCompare policy costs and insurer coverage.",
+    )
+    create_item(client, "Remote workflow systems\n\nAutomation ideas for consulting projects.")
+
+    response = client.get(f"/api/items/{selected['id']}/related")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) >= 1
+    assert all(match["item_id"] != selected["id"] for match in payload)
+    assert payload[0]["item_id"] == strongest_match["id"]
+    assert payload[0]["score"] > 0
+    assert payload[0]["reason"].startswith("Top matching chunk:")
+    assert payload[0]["matching_chunk_preview"]
+
+
+def test_related_items_returns_readable_missing_item_error(client: TestClient) -> None:
+    response = client.get("/api/items/999999/related")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Item not found."}
+
+
+def test_semantic_search_rebuilds_stale_hash_embeddings_before_search(client: TestClient) -> None:
+    item = create_item(client, "Louisiana property insurance\n\nFlood policy notes and insurer comparisons.")
+
+    db, generator = open_test_db()
+    try:
+        chunk = db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id == item["id"]).first()
+        assert chunk is not None
+        chunk.embedding_model = "local-hash-v1"
+        chunk.embedding_vector_json = json.dumps([0.1, 0.2, 0.3])
+        db.commit()
+    finally:
+        generator.close()
+
+    response = client.post(
+        "/api/retrieval/search",
+        json={"query": "property insurance in Louisiana", "limit": 5},
+    )
+
+    assert response.status_code == 200
+
+    db, generator = open_test_db()
+    try:
+        repaired_chunks = db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id == item["id"]).all()
+        assert repaired_chunks
+        assert all(chunk.embedding_model == "sentence-transformers/all-MiniLM-L6-v2" for chunk in repaired_chunks)
+        assert all(len(json.loads(chunk.embedding_vector_json)) == 384 for chunk in repaired_chunks)
+    finally:
+        generator.close()
+
+
+def test_create_item_repairs_stale_embeddings_before_adding_new_vectors(client: TestClient) -> None:
+    older_item = create_item(client, "Louisiana flood insurance\n\nExisting saved material.")
+
+    db, generator = open_test_db()
+    try:
+        chunk = db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id == older_item["id"]).first()
+        assert chunk is not None
+        chunk.embedding_model = "local-hash-v1"
+        chunk.embedding_vector_json = json.dumps([0.1, 0.2, 0.3])
+        db.commit()
+    finally:
+        generator.close()
+
+    newer_item = create_item(client, "Louisiana property insurance\n\nNew material after the upgrade.")
+
+    db, generator = open_test_db()
+    try:
+        all_chunks = db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id.in_([older_item["id"], newer_item["id"]])).all()
+        assert all_chunks
+        assert all(chunk.embedding_model == "sentence-transformers/all-MiniLM-L6-v2" for chunk in all_chunks)
+        assert all(len(json.loads(chunk.embedding_vector_json)) == 384 for chunk in all_chunks)
+    finally:
+        generator.close()
