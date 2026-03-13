@@ -1,0 +1,241 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #172033;
+  background: #eef2f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(123, 176, 255, 0.18), transparent 30%),
+    linear-gradient(180deg, #f5f8fc 0%, #e9eef5 100%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.app-header h1,
+.section-heading h2,
+.detail-card h3 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #496487;
+}
+
+.header-copy,
+.section-heading p,
+.detail-meta,
+.status-message,
+.library-item-date {
+  margin: 0;
+  color: #5f6f86;
+}
+
+.page-error,
+.form-error {
+  color: #9f2332;
+}
+
+.top-grid,
+.bottom-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.top-grid {
+  grid-template-columns: 1fr 1fr 1fr 0.9fr;
+  margin-bottom: 20px;
+}
+
+.bottom-grid {
+  grid-template-columns: 0.9fr 1.1fr;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(117, 137, 167, 0.18);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(56, 78, 108, 0.08);
+}
+
+.section-heading {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.composer-form,
+.search-box {
+  display: grid;
+  gap: 12px;
+}
+
+.field-label {
+  font-weight: 600;
+}
+
+.composer-textarea,
+.search-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fdfefe;
+}
+
+.file-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fdfefe;
+}
+
+.composer-textarea {
+  resize: vertical;
+  min-height: 220px;
+}
+
+.primary-button {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: #17375f;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.selected-file {
+  margin: 0;
+  color: #37455b;
+}
+
+.library-list {
+  display: grid;
+  gap: 12px;
+}
+
+.library-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+
+.library-item.selected {
+  border-color: #5c83ba;
+  background: #eef5ff;
+}
+
+.library-item-title {
+  font-weight: 700;
+}
+
+.library-item-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.library-item-badge {
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: #dbe7f7;
+  color: #29486f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.library-item-preview {
+  color: #37455b;
+}
+
+.detail-panel,
+.detail-card {
+  height: 100%;
+}
+
+.detail-card {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-content {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.95rem;
+  background: #f5f8fb;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.detail-source {
+  margin: 0;
+  color: #37455b;
+}
+
+.detail-source a {
+  color: #17375f;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .app-header,
+  .top-grid,
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-header {
+    align-items: start;
+  }
+}
