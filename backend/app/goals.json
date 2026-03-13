@@ -1,0 +1,17 @@
+[
+  {
+    "id": "goal:remote-income",
+    "name": "Remote income",
+    "description": "Find ideas, systems, or opportunities that support income that is not location-bound."
+  },
+  {
+    "id": "goal:louisiana-move",
+    "name": "Louisiana move",
+    "description": "Find research, planning notes, and practical considerations related to a move to Louisiana."
+  },
+  {
+    "id": "goal:workflow-automation",
+    "name": "Workflow automation",
+    "description": "Find systems, process ideas, or service opportunities related to workflow automation and repeatable operations."
+  }
+]

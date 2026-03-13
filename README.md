@@ -77,6 +77,7 @@ The current live build includes:
 - library/list view
 - item detail view
 - keyword search
+- phase 8 goal alignment engine
 
 This slice intentionally excludes desktop packaging, OCR-heavy PDF handling, autonomous agents, clustering, and images.
 
@@ -86,6 +87,7 @@ This slice intentionally excludes desktop packaging, OCR-heavy PDF handling, aut
 - semantic retrieval works on the current corpus scale
 - the repo can stand alone as a usable memory system
 - Jigsaw can consume Garbage Collector through thin adapters without requiring a merged codebase
+- one first `kernel.v1` engine now runs against the frozen shared contract
 
 ## Not Yet Proven
 
@@ -195,11 +197,12 @@ README.md
 - Phase 5: chunking, local embeddings, and semantic retrieval
 - Phase 6: grounded chat over retrieved chunks with cited sources
 - Phase 7: related items with simple why-related previews
+- Phase 8: Goal Alignment engine using the frozen `kernel.v1` contract
 - Future phases: agent access, image ingestion, and a stronger desktop-style interaction shell
 
 ## Current Verified Status
 
-Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, grounded one-shot chat, and related items.
+Thin-slice phase 8 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, local semantic retrieval, grounded one-shot chat, related items, and one first Goal Alignment engine built against `kernel.v1`.
 
 ## Semantic Retrieval Demo
 
@@ -242,8 +245,11 @@ Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF
 - grounded chat fails gracefully with a readable message when no LLM is configured
 - related items return ranked similar items with inspectable why-related previews
 - clicking a related item opens that item detail view
+- goal definitions load from a small local read-only goals file
+- Goal Alignment returns a grounded `kernel.v1` result for a selected item
+- item detail includes a compact Goal Alignment panel with score, confidence, matched targets, recommended action, and evidence snippets
 - schema upgrade has been verified against an older SQLite database shape
-- backend test suite currently passes with 20 tests
+- backend test suite currently passes with 25 tests
 - backend-down failures show a readable message
 - malformed URLs return a readable validation error
 - unreachable URLs return a readable fetch error
@@ -254,7 +260,13 @@ Thin-slice phase 7 is complete for pasted text, narrow URL ingestion, narrow PDF
 
 ## Verification Summary
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, a live semantic-retrieval query, a live grounded-chat flow using a local fake OpenAI-compatible adapter, and a live related-items verification on the upgraded embedding base.
+Verified on 2026-03-13 with backend tests passing (`25 passed`), plus prior live verification for the existing FastAPI server, Vite dev server, browser interaction, varied URL checks, multiple text-based PDF uploads, semantic retrieval, grounded chat, and related-items behavior.
+
+For the new Phase 8 Goal Alignment slice in this environment:
+
+- backend implementation and tests were verified locally
+- frontend code was added for the item-detail panel
+- frontend build/runtime for this phase was **not** verified in this environment because `npm` was unavailable here
 
 ## Not Built Yet
 
@@ -263,6 +275,7 @@ Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real 
 - multi-turn memory
 - agents or autonomous loops
 - clustering or bespoke engines
+- multiple Phase 8 engines beyond Goal Alignment
 
 ## Known Limits
 

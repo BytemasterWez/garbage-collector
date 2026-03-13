@@ -5,6 +5,7 @@ import {
   createItem,
   createPdfItem,
   createUrlItem,
+  fetchGoalAlignment,
   fetchItem,
   fetchItems,
   fetchRelatedItems,
@@ -20,6 +21,7 @@ import { SemanticSearchPanel } from "./components/SemanticSearchPanel";
 import { UrlComposer } from "./components/UrlComposer";
 import type {
   ChatAnswerResponse,
+  GoalAlignmentResult,
   ItemDetail,
   RelatedItem,
   ItemSummary,
@@ -44,6 +46,9 @@ export default function App() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatAnswer, setChatAnswer] = useState<ChatAnswerResponse | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [goalAlignment, setGoalAlignment] = useState<GoalAlignmentResult | null>(null);
+  const [goalAlignmentError, setGoalAlignmentError] = useState<string | null>(null);
+  const [isGoalAlignmentLoading, setIsGoalAlignmentLoading] = useState(false);
 
   useEffect(() => {
     void loadItems(query);
@@ -54,11 +59,14 @@ export default function App() {
       setSelectedItem(null);
       setRelatedItems([]);
       setRelatedError(null);
+      setGoalAlignment(null);
+      setGoalAlignmentError(null);
       return;
     }
 
     void loadItem(selectedItemId);
     void loadRelatedItems(selectedItemId);
+    void loadGoalAlignment(selectedItemId);
   }, [selectedItemId]);
 
   async function loadItems(searchQuery: string) {
@@ -113,6 +121,23 @@ export default function App() {
       setRelatedItems([]);
     } finally {
       setIsRelatedLoading(false);
+    }
+  }
+
+  async function loadGoalAlignment(itemId: number) {
+    try {
+      setIsGoalAlignmentLoading(true);
+      setGoalAlignmentError(null);
+      setGoalAlignment(null);
+      const result = await fetchGoalAlignment(itemId);
+      setGoalAlignment(result);
+    } catch (error) {
+      setGoalAlignmentError(
+        error instanceof Error ? error.message : "Failed to run Goal Alignment."
+      );
+      setGoalAlignment(null);
+    } finally {
+      setIsGoalAlignmentLoading(false);
     }
   }
 
@@ -281,6 +306,9 @@ export default function App() {
           relatedItems={relatedItems}
           isRelatedLoading={isRelatedLoading}
           relatedError={relatedError}
+          goalAlignment={goalAlignment}
+          isGoalAlignmentLoading={isGoalAlignmentLoading}
+          goalAlignmentError={goalAlignmentError}
           onSelectRelatedItem={setSelectedItemId}
         />
       </section>

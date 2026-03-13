@@ -347,6 +347,66 @@ textarea {
   cursor: pointer;
 }
 
+.goal-alignment-card,
+.goal-evidence-list {
+  display: grid;
+  gap: 12px;
+}
+
+.goal-alignment-summary {
+  margin: 0;
+  font-weight: 700;
+  color: #172033;
+}
+
+.goal-badge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.goal-badge-match {
+  background: #dff5e8;
+  color: #236246;
+}
+
+.goal-badge-weak_match {
+  background: #f8ecd7;
+  color: #845b18;
+}
+
+.goal-badge-no_match {
+  background: #eceff4;
+  color: #556476;
+}
+
+.goal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.goal-tag {
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #e4edf9;
+  color: #29486f;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.goal-evidence-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d8e0ea;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
 @media (max-width: 900px) {
   .app-header,
   .top-grid,

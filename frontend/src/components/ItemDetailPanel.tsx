@@ -1,4 +1,4 @@
-import type { ItemDetail, RelatedItem } from "../types/items";
+import type { GoalAlignmentResult, ItemDetail, RelatedItem } from "../types/items";
 
 type ItemDetailPanelProps = {
   item: ItemDetail | null;
@@ -7,6 +7,9 @@ type ItemDetailPanelProps = {
   relatedItems: RelatedItem[];
   isRelatedLoading: boolean;
   relatedError: string | null;
+  goalAlignment: GoalAlignmentResult | null;
+  isGoalAlignmentLoading: boolean;
+  goalAlignmentError: string | null;
   onSelectRelatedItem: (itemId: number) => void;
 };
 
@@ -29,6 +32,18 @@ function formatItemType(value: "pasted_text" | "url" | "pdf"): string {
   return "Text";
 }
 
+function formatClassification(value: GoalAlignmentResult["classification"]): string {
+  if (value === "weak_match") {
+    return "Weak match";
+  }
+
+  if (value === "no_match") {
+    return "No match";
+  }
+
+  return "Match";
+}
+
 export function ItemDetailPanel({
   item,
   isLoading,
@@ -36,6 +51,9 @@ export function ItemDetailPanel({
   relatedItems,
   isRelatedLoading,
   relatedError,
+  goalAlignment,
+  isGoalAlignmentLoading,
+  goalAlignmentError,
   onSelectRelatedItem
 }: ItemDetailPanelProps) {
   const hasEntities =
@@ -121,6 +139,59 @@ export function ItemDetailPanel({
             ) : (
               <p className="status-message">No conservative entities were detected for this item.</p>
             )}
+          </section>
+          <section className="detail-section">
+            <h4>Goal alignment</h4>
+            {isGoalAlignmentLoading ? (
+              <p className="status-message">Running Goal Alignment...</p>
+            ) : null}
+            {goalAlignmentError ? <p className="form-error">{goalAlignmentError}</p> : null}
+            {!isGoalAlignmentLoading && !goalAlignmentError && goalAlignment ? (
+              <div className="goal-alignment-card">
+                <div className="semantic-result-header">
+                  <p className="goal-alignment-summary">{goalAlignment.summary}</p>
+                  <span className={`goal-badge goal-badge-${goalAlignment.classification}`}>
+                    {formatClassification(goalAlignment.classification)}
+                  </span>
+                </div>
+                <p className="detail-meta">{goalAlignment.rationale}</p>
+                <dl className="detail-grid">
+                  <div>
+                    <dt>Score</dt>
+                    <dd>{goalAlignment.score.toFixed(3)}</dd>
+                  </div>
+                  <div>
+                    <dt>Confidence</dt>
+                    <dd>{goalAlignment.confidence.toFixed(3)}</dd>
+                  </div>
+                  <div>
+                    <dt>Recommended action</dt>
+                    <dd>{goalAlignment.outputs.recommended_action}</dd>
+                  </div>
+                  <div>
+                    <dt>Engine</dt>
+                    <dd>{goalAlignment.provenance.engine_version}</dd>
+                  </div>
+                </dl>
+                <div className="goal-tags">
+                  {goalAlignment.outputs.matched_targets.map((target) => (
+                    <span className="goal-tag" key={target.target_id}>
+                      {target.label} ({target.strength.toFixed(2)})
+                    </span>
+                  ))}
+                </div>
+                <div className="goal-evidence-list">
+                  {goalAlignment.evidence.map((record) => (
+                    <article className="goal-evidence-card" key={record.source_id}>
+                      <p className="semantic-result-chunk">{record.snippet}</p>
+                      <p className="detail-meta">
+                        Relevance {record.relevance.toFixed(3)} · Confidence {record.confidence.toFixed(3)}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
           <section className="detail-section">
             <h4>Related items</h4>

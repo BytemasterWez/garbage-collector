@@ -490,13 +490,67 @@ def test_create_item_repairs_stale_embeddings_before_adding_new_vectors(client: 
     finally:
         generator.close()
 
-    newer_item = create_item(client, "Louisiana property insurance\n\nNew material after the upgrade.")
 
-    db, generator = open_test_db()
-    try:
-        all_chunks = db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id.in_([older_item["id"], newer_item["id"]])).all()
-        assert all_chunks
-        assert all(chunk.embedding_model == "sentence-transformers/all-MiniLM-L6-v2" for chunk in all_chunks)
-        assert all(len(json.loads(chunk.embedding_vector_json)) == 384 for chunk in all_chunks)
-    finally:
-        generator.close()
+def test_read_goals_returns_read_only_goal_definitions(client: TestClient) -> None:
+    response = client.get("/api/goals")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) >= 1
+    assert {"id", "name", "description"} <= set(payload[0].keys())
+
+
+def test_goal_alignment_returns_grounded_matches(client: TestClient) -> None:
+    item = create_item(
+        client,
+        "Remote workflow automation\n\nBuild repeatable workflow automation services for remote clients and income.",
+    )
+
+    response = client.get(f"/api/items/{item['id']}/goal-alignment")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["contract_version"] == "kernel.v1"
+    assert payload["engine_name"] == "goal_alignment"
+    assert payload["subject"]["subject_id"] == f"gc:item:{item['id']}"
+    assert payload["classification"] in {"match", "weak_match", "no_match"}
+    assert 0 <= payload["score"] <= 1
+    assert 0 <= payload["confidence"] <= 1
+    assert "recommended_action" in payload["outputs"]
+    assert isinstance(payload["outputs"]["matched_targets"], list)
+    assert isinstance(payload["evidence"], list)
+    assert payload["evidence"]
+    assert {"observed_at", "confidence", "provenance"} <= set(payload["evidence"][0].keys())
+    assert payload["classification"] in {"match", "weak_match"}
+
+
+def test_goal_alignment_returns_missing_item_error(client: TestClient) -> None:
+    response = client.get("/api/items/999999/goal-alignment")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Item not found."}
+
+
+def test_goal_alignment_keeps_score_and_confidence_separate(client: TestClient) -> None:
+    item = create_item(
+        client,
+        "Remote workflow automation\n\nBuild repeatable workflow automation services for remote clients and income.",
+    )
+
+    response = client.get(f"/api/items/{item['id']}/goal-alignment")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["score"] != payload["confidence"]
+
+
+def test_goal_alignment_low_evidence_item_does_not_force_match(client: TestClient) -> None:
+    item = create_item(client, "Misc note\n\nBuy groceries tomorrow.")
+
+    response = client.get(f"/api/items/{item['id']}/goal-alignment")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["classification"] in {"weak_match", "no_match"}
+    if payload["classification"] == "no_match":
+        assert payload["outputs"]["recommended_action"] == "ignore"

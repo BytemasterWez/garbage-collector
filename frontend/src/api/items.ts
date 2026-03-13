@@ -6,6 +6,8 @@ import type {
   ChatAnswerPayload,
   ChatAnswerResponse,
   CreateUrlItemPayload,
+  GoalAlignmentResult,
+  GoalDefinition,
   ItemDetail,
   ItemSummary,
   RelatedItem
@@ -140,4 +142,14 @@ export async function askGroundedQuestion(
 export async function fetchRelatedItems(itemId: number): Promise<RelatedItem[]> {
   const response = await makeRequest(`${API_BASE_URL}/items/${itemId}/related`);
   return handleResponse<RelatedItem[]>(response);
+}
+
+export async function fetchGoals(): Promise<GoalDefinition[]> {
+  const response = await makeRequest(`${API_BASE_URL}/goals`);
+  return handleResponse<GoalDefinition[]>(response);
+}
+
+export async function fetchGoalAlignment(itemId: number): Promise<GoalAlignmentResult> {
+  const response = await makeRequest(`${API_BASE_URL}/items/${itemId}/goal-alignment`);
+  return handleResponse<GoalAlignmentResult>(response);
 }

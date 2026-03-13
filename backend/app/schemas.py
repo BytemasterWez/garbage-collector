@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -157,6 +158,68 @@ class RelatedItemResult(BaseModel):
     score: float
     reason: str
     matching_chunk_preview: str
+
+
+class GoalDefinition(BaseModel):
+    id: str
+    name: str
+    description: str
+
+
+class KernelSubject(BaseModel):
+    subject_type: str
+    subject_id: str
+
+
+class KernelEvidence(BaseModel):
+    evidence_type: str
+    source_id: str
+    source_item_id: str
+    snippet: str
+    relevance: float = Field(ge=0, le=1)
+    confidence: float = Field(ge=0, le=1)
+    observed_at: datetime
+    provenance: dict[str, Any]
+
+
+class KernelSignals(BaseModel):
+    relevance: float = Field(ge=0, le=1)
+    novelty: float = Field(ge=0, le=1)
+    actionability: float = Field(ge=0, le=1)
+    recurrence: float = Field(ge=0, le=1)
+
+
+class KernelMatchedTarget(BaseModel):
+    target_id: str
+    label: str
+    strength: float = Field(ge=0, le=1)
+
+
+class KernelOutputs(BaseModel):
+    matched_targets: list[KernelMatchedTarget]
+    recommended_action: Literal["review", "hold", "ignore"]
+    tags: list[str]
+
+
+class KernelProvenance(BaseModel):
+    generated_at: datetime
+    source_system: str
+    engine_version: str
+
+
+class GoalAlignmentResult(BaseModel):
+    contract_version: Literal["kernel.v1"]
+    engine_name: Literal["goal_alignment"]
+    subject: KernelSubject
+    summary: str
+    classification: Literal["match", "weak_match", "no_match"]
+    score: float = Field(ge=0, le=1)
+    confidence: float = Field(ge=0, le=1)
+    rationale: str
+    evidence: list[KernelEvidence]
+    signals: KernelSignals
+    outputs: KernelOutputs
+    provenance: KernelProvenance
 
 
 class HealthResponse(BaseModel):

@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import crud, grounded_chat, schemas
+from . import crud, goal_alignment, goals_store, grounded_chat, schemas
 from .chat_adapter import ChatAdapterError, ChatAdapterNotConfiguredError
 from .db import ensure_schema, get_db
 
@@ -130,6 +130,23 @@ def read_related_items(item_id: int, db: Session = Depends(get_db)) -> list[sche
         )
         for match in matches
     ]
+
+
+@app.get("/api/goals", response_model=list[schemas.GoalDefinition])
+def read_goals() -> list[schemas.GoalDefinition]:
+    """Return the small read-only goal list for the first engine."""
+    return [schemas.GoalDefinition.model_validate(goal) for goal in goals_store.load_goals()]
+
+
+@app.get("/api/items/{item_id}/goal-alignment", response_model=schemas.GoalAlignmentResult)
+def read_goal_alignment(item_id: int, db: Session = Depends(get_db)) -> schemas.GoalAlignmentResult:
+    """Run the Goal Alignment engine for one selected item."""
+    try:
+        result = goal_alignment.run_goal_alignment(db, item_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return schemas.GoalAlignmentResult.model_validate(result)
 
 
 @app.post("/api/retrieval/search", response_model=list[schemas.SemanticSearchResult])

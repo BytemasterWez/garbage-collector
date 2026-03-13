@@ -100,3 +100,57 @@ export type ChatAnswerResponse = {
   answer: string;
   citations: ChatCitation[];
 };
+
+export type GoalDefinition = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+export type KernelEvidence = {
+  evidence_type: string;
+  source_id: string;
+  source_item_id: string;
+  snippet: string;
+  relevance: number;
+  confidence: number;
+  observed_at: string;
+  provenance: Record<string, unknown>;
+};
+
+export type KernelMatchedTarget = {
+  target_id: string;
+  label: string;
+  strength: number;
+};
+
+export type GoalAlignmentResult = {
+  contract_version: "kernel.v1";
+  engine_name: "goal_alignment";
+  subject: {
+    subject_type: string;
+    subject_id: string;
+  };
+  summary: string;
+  classification: "match" | "weak_match" | "no_match";
+  score: number;
+  confidence: number;
+  rationale: string;
+  evidence: KernelEvidence[];
+  signals: {
+    relevance: number;
+    novelty: number;
+    actionability: number;
+    recurrence: number;
+  };
+  outputs: {
+    matched_targets: KernelMatchedTarget[];
+    recommended_action: "review" | "hold" | "ignore";
+    tags: string[];
+  };
+  provenance: {
+    generated_at: string;
+    source_system: string;
+    engine_version: string;
+  };
+};
