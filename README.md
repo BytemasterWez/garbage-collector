@@ -36,6 +36,18 @@ Garbage Collector -> Jigsaw -> Arbiter -> Action
 
 This repository remains independently useful as a standalone local-first memory system.
 
+## Conceptual Role
+
+```mermaid
+flowchart LR
+    IN["Notes · URLs · PDFs"]
+    --> INGEST["Ingest + Extract"]
+    --> ENRICH["Metadata + Entities"]
+    --> STORE["Local Storage"]
+    --> RETRIEVE["Semantic Retrieval"]
+    --> OUT["Search · Chat · Related Items · Engine Results"]
+```
+
 ## Public Interfaces
 
 - HTTP API in [`backend/app/main.py`](./backend/app/main.py)
