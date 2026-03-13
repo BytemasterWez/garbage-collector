@@ -1,6 +1,8 @@
 import type {
   CreateItemPayload,
   CreatePdfItemPayload,
+  SemanticSearchPayload,
+  SemanticSearchResult,
   CreateUrlItemPayload,
   ItemDetail,
   ItemSummary
@@ -96,4 +98,21 @@ export async function createPdfItem(payload: CreatePdfItemPayload): Promise<Item
   });
 
   return handleResponse<ItemDetail>(response);
+}
+
+export async function searchSemantic(
+  payload: SemanticSearchPayload
+): Promise<SemanticSearchResult[]> {
+  const response = await makeRequest(`${API_BASE_URL}/retrieval/search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      query: payload.query,
+      limit: payload.limit ?? 8
+    })
+  });
+
+  return handleResponse<SemanticSearchResult[]>(response);
 }

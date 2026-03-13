@@ -106,3 +106,25 @@ def read_item(item_id: int, db: Session = Depends(get_db)) -> schemas.ItemDetail
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found.")
     return build_item_detail(item)
+
+
+@app.post("/api/retrieval/search", response_model=list[schemas.SemanticSearchResult])
+def semantic_search(
+    payload: schemas.SemanticSearchRequest, db: Session = Depends(get_db)
+) -> list[schemas.SemanticSearchResult]:
+    """Return ranked chunk matches using the local retrieval layer."""
+    matches = crud.semantic_search(db, payload.query, limit=payload.limit)
+    return [
+        schemas.SemanticSearchResult(
+            item_id=match.item.id,
+            item_type=match.item.item_type,
+            item_title=match.item.title,
+            source_url=match.item.source_url,
+            source_filename=match.item.source_filename,
+            chunk_id=match.chunk.id,
+            chunk_index=match.chunk.chunk_index,
+            chunk_text=match.chunk.content,
+            score=round(match.score, 4),
+        )
+        for match in matches
+    ]

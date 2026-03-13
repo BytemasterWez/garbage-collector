@@ -8,16 +8,20 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from .chunking import split_text_into_chunks
 from .db import PDF_STORAGE_DIR
-from .models import Item
+from .embeddings import EmbeddingProvider, get_default_embedding_provider
+from .models import Item, ItemChunk
+from .retrieval import ChunkRecord, ChunkSearchMatch, VectorStoreBackend, get_default_vector_store
 
 DEFAULT_REQUEST_HEADERS = {
     "User-Agent": "GarbageCollector/0.2 (+http://localhost)"
 }
 REQUEST_TIMEOUT_SECONDS = 10
+SEMANTIC_RESULT_LIMIT = 8
 
 # Local Windows Python installs sometimes miss certificate chain setup.
 # For this personal localhost tool, retrying once without verification is a pragmatic fallback.
@@ -188,6 +192,8 @@ def create_item(db: Session, content: str) -> Item:
     item = Item(item_type="pasted_text", title=derive_title(content), content=content)
     enrich_item(item, item_type="pasted_text", content=content)
     db.add(item)
+    db.flush()
+    sync_item_chunks(db, item)
     db.commit()
     db.refresh(item)
     return item
@@ -273,6 +279,8 @@ def create_url_item(db: Session, url: str) -> Item:
     )
     enrich_item(item, item_type="url", content=content, source_url=normalized_url)
     db.add(item)
+    db.flush()
+    sync_item_chunks(db, item)
     db.commit()
     db.refresh(item)
     return item
@@ -351,9 +359,89 @@ def create_pdf_item(db: Session, filename: str, file_bytes: bytes) -> Item:
         source_filename=normalized_filename,
     )
     db.add(item)
+    db.flush()
+    sync_item_chunks(db, item)
     db.commit()
     db.refresh(item)
     return item
+
+
+def build_chunk_records(content: str) -> list[ChunkRecord]:
+    """Create chunk records from one item's text content."""
+    return [
+        ChunkRecord(
+            chunk_index=index,
+            content=chunk_text,
+            content_preview=build_preview(chunk_text, max_length=220),
+            character_count=len(chunk_text),
+        )
+        for index, chunk_text in enumerate(split_text_into_chunks(content))
+    ]
+
+
+def sync_item_chunks(
+    db: Session,
+    item: Item,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: VectorStoreBackend | None = None,
+) -> None:
+    """Regenerate chunks and embeddings for a single item."""
+    prepared_chunks = build_chunk_records(item.content)
+    provider = embedding_provider or get_default_embedding_provider()
+    backend = vector_store or get_default_vector_store()
+
+    if not prepared_chunks:
+        db.query(ItemChunk).filter(ItemChunk.item_id == item.id).delete()
+        return
+
+    vectors = provider.embed_texts([chunk.content for chunk in prepared_chunks])
+    backend.replace_item_vectors(
+        db,
+        item_id=item.id,
+        chunks=prepared_chunks,
+        vectors=vectors,
+        embedding_model=provider.model_name,
+    )
+
+
+def backfill_missing_item_chunks(
+    db: Session,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: VectorStoreBackend | None = None,
+) -> None:
+    """Create chunks for older items that predate the retrieval layer."""
+    chunked_item_ids = set(db.scalars(select(ItemChunk.item_id).distinct()))
+    items = db.scalars(select(Item).order_by(Item.id.asc())).all()
+
+    for item in items:
+        if item.id not in chunked_item_ids:
+            sync_item_chunks(
+                db,
+                item,
+                embedding_provider=embedding_provider,
+                vector_store=vector_store,
+            )
+
+    db.commit()
+
+
+def semantic_search(
+    db: Session,
+    query: str,
+    *,
+    limit: int = SEMANTIC_RESULT_LIMIT,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: VectorStoreBackend | None = None,
+) -> list[ChunkSearchMatch]:
+    """Run chunk-level semantic retrieval across all indexed items."""
+    provider = embedding_provider or get_default_embedding_provider()
+    backend = vector_store or get_default_vector_store()
+
+    backfill_missing_item_chunks(db, embedding_provider=provider, vector_store=backend)
+    query_vector = provider.embed_text(query)
+    return backend.search(db, query_vector=query_vector, limit=limit)
 
 
 def list_items(db: Session, query: str | None = None) -> list[Item]:
@@ -374,3 +462,10 @@ def list_items(db: Session, query: str | None = None) -> list[Item]:
 def get_item(db: Session, item_id: int) -> Item | None:
     """Fetch a single item by its primary key."""
     return db.get(Item, item_id)
+
+
+def count_chunks_for_item(db: Session, item_id: int) -> int:
+    """Small helper for tests and future diagnostics."""
+    return int(
+        db.scalar(select(func.count()).select_from(ItemChunk).where(ItemChunk.item_id == item_id)) or 0
+    )

@@ -47,6 +47,13 @@ def create_item(client: TestClient, content: str) -> dict:
     return response.json()
 
 
+def open_test_db() -> tuple[Session, Iterator[Session]]:
+    """Open the temporary test database session from the dependency override."""
+    generator = app.dependency_overrides[get_db]()
+    db = next(generator)
+    return db, generator
+
+
 def test_create_item_returns_saved_payload(client: TestClient) -> None:
     response = client.post("/api/items", json={"content": "Budget ideas\n\nCompare side hustles."})
 
@@ -58,6 +65,7 @@ def test_create_item_returns_saved_payload(client: TestClient) -> None:
     assert payload["metadata"]["item_type"] == "pasted_text"
     assert payload["metadata"]["word_count"] == 5
     assert payload["entities"]["people"] == []
+    assert payload["id"] > 0
 
 
 def test_list_items_returns_newest_first(client: TestClient) -> None:
@@ -233,3 +241,79 @@ def test_schema_upgrade_adds_phase_4_columns_for_existing_database(tmp_path: Pat
     assert "stored_file_path" in columns
     assert "metadata_json" in columns
     assert "entities_json" in columns
+
+
+def test_create_flows_generate_chunk_rows_for_retrieval(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    class MockResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = "<html><head><title>Chunked URL</title></head><body><p>Remote income systems note.</p></body></html>"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    monkeypatch.setattr(crud.requests, "get", lambda url, headers, timeout: MockResponse())
+
+    pasted_item = create_item(client, "Chunked note\n\nLouisiana property insurance planning.")
+
+    url_response = client.post("/api/items/from-url", json={"url": "https://example.com/chunk"})
+    assert url_response.status_code == 201
+
+    pdf_bytes = build_text_pdf_bytes(["Chunked PDF", "Remote income planning for Louisiana."])
+    pdf_response = client.post(
+        "/api/items/from-pdf",
+        files={"file": ("chunked.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert pdf_response.status_code == 201
+
+    db, generator = open_test_db()
+    try:
+        assert crud.count_chunks_for_item(db, pasted_item["id"]) > 0
+        assert crud.count_chunks_for_item(db, url_response.json()["id"]) > 0
+        assert crud.count_chunks_for_item(db, pdf_response.json()["id"]) > 0
+    finally:
+        generator.close()
+
+
+def test_semantic_search_returns_ranked_chunk_matches(client: TestClient) -> None:
+    create_item(client, "Louisiana property insurance\n\nCompare insurers and flood policy notes.")
+    create_item(client, "Remote income systems\n\nBuild better workflow automation.")
+
+    response = client.post(
+        "/api/retrieval/search",
+        json={"query": "property insurance in Louisiana", "limit": 5},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) >= 1
+    assert payload[0]["item_title"] == "Louisiana property insurance"
+    assert payload[0]["item_type"] == "pasted_text"
+    assert "chunk_text" in payload[0]
+    assert payload[0]["score"] > 0
+
+
+def test_semantic_search_backfills_chunks_for_existing_items_without_index(client: TestClient) -> None:
+    db, generator = open_test_db()
+    try:
+        legacy_item = crud.create_item(db, "Legacy retrieval note\n\nLouisiana taxes and insurance.")
+        db.query(crud.ItemChunk).filter(crud.ItemChunk.item_id == legacy_item.id).delete()
+        db.commit()
+        assert crud.count_chunks_for_item(db, legacy_item.id) == 0
+    finally:
+        generator.close()
+
+    response = client.post(
+        "/api/retrieval/search",
+        json={"query": "Louisiana insurance", "limit": 5},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert any(match["item_id"] == legacy_item.id for match in payload)
+
+    db, generator = open_test_db()
+    try:
+        assert crud.count_chunks_for_item(db, legacy_item.id) > 0
+    finally:
+        generator.close()

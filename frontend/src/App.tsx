@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 
-import { createItem, createPdfItem, createUrlItem, fetchItem, fetchItems } from "./api/items";
+import {
+  createItem,
+  createPdfItem,
+  createUrlItem,
+  fetchItem,
+  fetchItems,
+  searchSemantic
+} from "./api/items";
 import { ItemComposer } from "./components/ItemComposer";
 import { ItemDetailPanel } from "./components/ItemDetailPanel";
 import { LibraryList } from "./components/LibraryList";
 import { PdfComposer } from "./components/PdfComposer";
 import { SearchBox } from "./components/SearchBox";
+import { SemanticSearchPanel } from "./components/SemanticSearchPanel";
 import { UrlComposer } from "./components/UrlComposer";
-import type { ItemDetail, ItemSummary } from "./types/items";
+import type { ItemDetail, ItemSummary, SemanticSearchResult } from "./types/items";
 
 export default function App() {
   const [items, setItems] = useState<ItemSummary[]>([]);
@@ -17,7 +25,10 @@ export default function App() {
   const [isListLoading, setIsListLoading] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSemanticLoading, setIsSemanticLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [semanticError, setSemanticError] = useState<string | null>(null);
+  const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
 
   useEffect(() => {
     void loadItems(query);
@@ -133,6 +144,29 @@ export default function App() {
     }
   }
 
+  async function handleSemanticSearch(semanticQuery: string): Promise<void> {
+    const cleaned = semanticQuery.trim();
+    if (!cleaned) {
+      setSemanticError("Enter a semantic query before searching.");
+      setSemanticResults([]);
+      return;
+    }
+
+    try {
+      setIsSemanticLoading(true);
+      setSemanticError(null);
+      const results = await searchSemantic({ query: cleaned, limit: 8 });
+      setSemanticResults(results);
+    } catch (error) {
+      setSemanticError(
+        error instanceof Error ? error.message : "Failed to run semantic search."
+      );
+      setSemanticResults([]);
+    } finally {
+      setIsSemanticLoading(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -159,6 +193,14 @@ export default function App() {
           <SearchBox query={query} onQueryChange={setQuery} />
         </section>
       </section>
+
+      <SemanticSearchPanel
+        errorMessage={semanticError}
+        isLoading={isSemanticLoading}
+        onSearch={handleSemanticSearch}
+        onSelectItem={setSelectedItemId}
+        results={semanticResults}
+      />
 
       <section className="bottom-grid">
         <LibraryList

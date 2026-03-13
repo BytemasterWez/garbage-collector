@@ -11,6 +11,9 @@ This first slice intentionally includes only:
 - pasted text ingestion
 - URL ingestion
 - PDF ingestion
+- chunking
+- local embeddings
+- semantic retrieval
 - local storage with SQLite
 - library/list view
 - item detail view
@@ -65,11 +68,12 @@ README.md
 - Phase 2: URL ingestion with basic HTML fetching and text extraction
 - Phase 3: PDF ingestion for text-based PDFs with local file storage
 - Phase 4: conservative metadata and entity extraction for item detail view
-- Future phases: retrieval layers, agent access, image ingestion, and a stronger desktop-style interaction shell
+- Phase 5: chunking, local embeddings, and semantic retrieval
+- Future phases: agent access, image ingestion, and a stronger desktop-style interaction shell
 
 ## Current Verified Status
 
-Thin-slice phase 4 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, and conservative metadata/entity extraction.
+Thin-slice phase 5 is complete for pasted text, narrow URL ingestion, narrow PDF ingestion, conservative metadata/entity extraction, and local semantic retrieval.
 
 Verified working:
 
@@ -82,6 +86,8 @@ Verified working:
 - PDF upload has been verified with multiple text-based sample PDFs
 - extracted metadata persists for `pasted_text`, `url`, and `pdf` items
 - extracted entities persist for `pasted_text`, `url`, and `pdf` items
+- chunk rows persist for `pasted_text`, `url`, and `pdf` items
+- local embeddings persist for chunk rows
 - library refreshes after create
 - the newly created item auto-selects
 - the detail panel updates for the selected item
@@ -91,7 +97,10 @@ Verified working:
 - item detail view renders cleanly when no conservative entities are detected
 - keyword search filters the library
 - search works across `pasted_text`, `url`, and `pdf` item types
+- semantic retrieval returns ranked chunk matches with scores and source item links
+- semantic retrieval has been verified through the browser UI and the live API
 - schema upgrade has been verified against an older SQLite database shape
+- backend test suite currently passes with 13 tests
 - backend-down failures show a readable message
 - malformed URLs return a readable validation error
 - unreachable URLs return a readable fetch error
@@ -100,14 +109,21 @@ Verified working:
 - missing items return a readable `Item not found.` error
 - the live browser app loads without obvious console/runtime errors in normal use
 
-Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, and multiple text-based PDF uploads.
+Verified on 2026-03-13 with a live FastAPI server, a live Vite dev server, real browser interaction, backend tests, a small varied URL check, multiple text-based PDF uploads, and a live semantic-retrieval query.
 
 Not built yet:
 
 - image ingestion
-- embeddings or semantic search
 - chat or analysis features
 - desktop packaging
+
+Current semantic retrieval limits:
+
+- chunking uses fixed-size overlapping text windows rather than token-aware segmentation
+- embeddings are local deterministic hash vectors, not model-based semantic embeddings
+- retrieval currently scores chunk vectors in Python over SQLite-backed JSON vectors
+- this is suitable for the current small local corpus, but not intended as the final high-scale vector backend
+- the backend keeps chunking, embedding generation, and vector retrieval as separate boundaries so a future vector store can replace the current adapter cleanly
 
 Current metadata and entity extraction limits:
 

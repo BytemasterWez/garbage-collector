@@ -23,6 +23,14 @@ backend-dev.log
 backend-dev.err.log
 frontend-dev.log
 frontend-dev.err.log
+chroma/
+chromadb/
+lancedb/
+vectors/
+vector_store/
+embedding_cache/
+*.embeddings.json
+*.embeddings.npy
 
 # Frontend / Vite
 frontend/node_modules/

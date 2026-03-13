@@ -49,3 +49,20 @@ export type CreateUrlItemPayload = {
 export type CreatePdfItemPayload = {
   file: File;
 };
+
+export type SemanticSearchPayload = {
+  query: string;
+  limit?: number;
+};
+
+export type SemanticSearchResult = {
+  item_id: number;
+  item_type: "pasted_text" | "url" | "pdf";
+  item_title: string;
+  source_url: string | null;
+  source_filename: string | null;
+  chunk_id: number;
+  chunk_index: number;
+  chunk_text: string;
+  score: number;
+};

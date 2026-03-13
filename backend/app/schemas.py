@@ -32,6 +32,21 @@ class UrlItemCreate(BaseModel):
         return cleaned
 
 
+class SemanticSearchRequest(BaseModel):
+    """Payload for chunk-level semantic retrieval."""
+
+    query: str = Field(min_length=1)
+    limit: int = Field(default=8, ge=1, le=20)
+
+    @field_validator("query")
+    @classmethod
+    def query_must_not_be_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Search query must not be blank.")
+        return cleaned
+
+
 class ItemSummary(BaseModel):
     """Compact item shape for the library view."""
 
@@ -78,6 +93,20 @@ class ItemDetail(BaseModel):
     entities: ItemEntities
     created_at: datetime
     updated_at: datetime
+
+
+class SemanticSearchResult(BaseModel):
+    """Ranked semantic retrieval match at the chunk level."""
+
+    item_id: int
+    item_type: str
+    item_title: str
+    source_url: str | None = None
+    source_filename: str | None = None
+    chunk_id: int
+    chunk_index: int
+    chunk_text: str
+    score: float
 
 
 class HealthResponse(BaseModel):

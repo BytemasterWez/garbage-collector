@@ -99,7 +99,8 @@ textarea {
 }
 
 .composer-form,
-.search-box {
+.search-box,
+.semantic-search-form {
   display: grid;
   gap: 12px;
 }
@@ -254,6 +255,54 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.semantic-panel {
+  margin-bottom: 20px;
+}
+
+.semantic-search-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.semantic-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.semantic-result {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+
+.semantic-result-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.semantic-result-score {
+  margin: 0;
+  color: #496487;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.semantic-result-chunk {
+  margin: 0;
+  color: #37455b;
+}
+
 @media (max-width: 900px) {
   .app-header,
   .top-grid,
@@ -263,5 +312,9 @@ textarea {
 
   .app-header {
     align-items: start;
+  }
+
+  .semantic-search-row {
+    grid-template-columns: 1fr;
   }
 }
