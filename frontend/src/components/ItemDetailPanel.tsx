@@ -14,6 +14,13 @@ function formatDate(value: string): string {
 }
 
 export function ItemDetailPanel({ item, isLoading, hasError }: ItemDetailPanelProps) {
+  const hasEntities =
+    item &&
+    (item.entities.people.length > 0 ||
+      item.entities.organizations.length > 0 ||
+      item.entities.places.length > 0 ||
+      item.entities.dates.length > 0);
+
   return (
     <section className="panel detail-panel">
       <div className="section-heading">
@@ -43,6 +50,54 @@ export function ItemDetailPanel({ item, isLoading, hasError }: ItemDetailPanelPr
               </a>
             </p>
           ) : null}
+          <section className="detail-section">
+            <h4>Metadata</h4>
+            <dl className="detail-grid">
+              <div>
+                <dt>Word count</dt>
+                <dd>{item.metadata.word_count}</dd>
+              </div>
+              <div>
+                <dt>Character count</dt>
+                <dd>{item.metadata.character_count}</dd>
+              </div>
+              <div>
+                <dt>Line count</dt>
+                <dd>{item.metadata.line_count}</dd>
+              </div>
+              {item.metadata.hostname ? (
+                <div>
+                  <dt>Hostname</dt>
+                  <dd>{item.metadata.hostname}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </section>
+          <section className="detail-section">
+            <h4>Entities</h4>
+            {hasEntities ? (
+              <dl className="detail-grid">
+                <div>
+                  <dt>People</dt>
+                  <dd>{item.entities.people.join(", ") || "None detected"}</dd>
+                </div>
+                <div>
+                  <dt>Organizations</dt>
+                  <dd>{item.entities.organizations.join(", ") || "None detected"}</dd>
+                </div>
+                <div>
+                  <dt>Places</dt>
+                  <dd>{item.entities.places.join(", ") || "None detected"}</dd>
+                </div>
+                <div>
+                  <dt>Dates</dt>
+                  <dd>{item.entities.dates.join(", ") || "None detected"}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="status-message">No conservative entities were detected for this item.</p>
+            )}
+          </section>
           <pre className="detail-content">{item.content}</pre>
         </article>
       ) : null}

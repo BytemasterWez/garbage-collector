@@ -49,3 +49,4 @@ Desktop.ini
 # Local browser automation artifacts
 .playwright-cli/
 .playwright-clear-search.js
+output/

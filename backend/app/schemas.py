@@ -45,6 +45,26 @@ class ItemSummary(BaseModel):
     updated_at: datetime
 
 
+class ItemMetadata(BaseModel):
+    """Parsed lightweight metadata for display and later enrichment phases."""
+
+    item_type: str
+    word_count: int
+    character_count: int
+    line_count: int
+    hostname: str | None = None
+    source_filename: str | None = None
+
+
+class ItemEntities(BaseModel):
+    """Conservative rule-based entity buckets."""
+
+    people: list[str]
+    organizations: list[str]
+    places: list[str]
+    dates: list[str]
+
+
 class ItemDetail(BaseModel):
     """Full item shape for the detail view."""
 
@@ -54,6 +74,8 @@ class ItemDetail(BaseModel):
     source_filename: str | None = None
     title: str
     content: str
+    metadata: ItemMetadata
+    entities: ItemEntities
     created_at: datetime
     updated_at: datetime
 

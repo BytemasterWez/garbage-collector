@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
@@ -21,13 +21,13 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def ensure_schema() -> None:
+def ensure_schema_for_engine(target_engine: Engine) -> None:
     """Create tables and add missing SQLite columns for small local upgrades."""
     from .models import Item  # Import here to avoid circular imports during module load.
 
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=target_engine)
 
-    inspector = inspect(engine)
+    inspector = inspect(target_engine)
     if "items" not in inspector.get_table_names():
         return
 
@@ -46,14 +46,25 @@ def ensure_schema() -> None:
     if "stored_file_path" not in existing_columns:
         statements.append("ALTER TABLE items ADD COLUMN stored_file_path TEXT")
 
+    if "metadata_json" not in existing_columns:
+        statements.append("ALTER TABLE items ADD COLUMN metadata_json TEXT")
+
+    if "entities_json" not in existing_columns:
+        statements.append("ALTER TABLE items ADD COLUMN entities_json TEXT")
+
     if not statements:
         return
 
     PDF_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    with engine.begin() as connection:
+    with target_engine.begin() as connection:
         for statement in statements:
             connection.execute(text(statement))
+
+
+def ensure_schema() -> None:
+    """Create tables and add missing SQLite columns for the app database."""
+    ensure_schema_for_engine(engine)
 
 
 def get_db():

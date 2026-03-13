@@ -21,6 +21,8 @@ class Item(Base):
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_filename: Mapped[str | None] = mapped_column(Text, nullable=True)
     stored_file_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entities_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

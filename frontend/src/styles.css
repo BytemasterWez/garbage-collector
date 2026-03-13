@@ -41,7 +41,8 @@ textarea {
 
 .app-header h1,
 .section-heading h2,
-.detail-card h3 {
+.detail-card h3,
+.detail-section h4 {
   margin: 0;
 }
 
@@ -205,6 +206,31 @@ textarea {
 .detail-card {
   display: grid;
   gap: 12px;
+}
+
+.detail-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: #f7f9fc;
+  border-radius: 14px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.detail-grid dt {
+  font-weight: 700;
+  color: #29486f;
+}
+
+.detail-grid dd {
+  margin: 4px 0 0;
+  color: #37455b;
 }
 
 .detail-content {

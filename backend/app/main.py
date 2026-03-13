@@ -23,6 +23,22 @@ app.add_middleware(
 )
 
 
+def build_item_detail(item) -> schemas.ItemDetail:
+    """Create the parsed item-detail response shared by create and read routes."""
+    return schemas.ItemDetail(
+        id=item.id,
+        item_type=item.item_type,
+        source_url=item.source_url,
+        source_filename=item.source_filename,
+        title=item.title,
+        content=item.content,
+        metadata=schemas.ItemMetadata.model_validate(crud.parse_metadata_json(item)),
+        entities=schemas.ItemEntities.model_validate(crud.parse_entities_json(item)),
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
 @app.get("/api/health", response_model=schemas.HealthResponse)
 def health_check() -> schemas.HealthResponse:
     """Simple route to confirm the backend is running."""
@@ -55,7 +71,7 @@ def read_items(
 def create_item(payload: schemas.ItemCreate, db: Session = Depends(get_db)) -> schemas.ItemDetail:
     """Save pasted text into local storage."""
     item = crud.create_item(db, payload.content)
-    return schemas.ItemDetail.model_validate(item, from_attributes=True)
+    return build_item_detail(item)
 
 
 @app.post("/api/items/from-url", response_model=schemas.ItemDetail, status_code=201)
@@ -67,7 +83,7 @@ def create_url_item(
         item = crud.create_url_item(db, payload.url)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return schemas.ItemDetail.model_validate(item, from_attributes=True)
+    return build_item_detail(item)
 
 
 @app.post("/api/items/from-pdf", response_model=schemas.ItemDetail, status_code=201)
@@ -80,7 +96,7 @@ async def create_pdf_item(
         item = crud.create_pdf_item(db, file.filename, file_bytes)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return schemas.ItemDetail.model_validate(item, from_attributes=True)
+    return build_item_detail(item)
 
 
 @app.get("/api/items/{item_id}", response_model=schemas.ItemDetail)
@@ -89,4 +105,4 @@ def read_item(item_id: int, db: Session = Depends(get_db)) -> schemas.ItemDetail
     item = crud.get_item(db, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found.")
-    return schemas.ItemDetail.model_validate(item, from_attributes=True)
+    return build_item_detail(item)

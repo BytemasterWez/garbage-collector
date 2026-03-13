@@ -16,8 +16,26 @@ export type ItemDetail = {
   source_filename: string | null;
   title: string;
   content: string;
+  metadata: ItemMetadata;
+  entities: ItemEntities;
   created_at: string;
   updated_at: string;
+};
+
+export type ItemMetadata = {
+  item_type: "pasted_text" | "url" | "pdf" | string;
+  word_count: number;
+  character_count: number;
+  line_count: number;
+  hostname: string | null;
+  source_filename: string | null;
+};
+
+export type ItemEntities = {
+  people: string[];
+  organizations: string[];
+  places: string[];
+  dates: string[];
 };
 
 export type CreateItemPayload = {

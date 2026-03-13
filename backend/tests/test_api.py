@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from reportlab.pdfgen import canvas
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import crud
-from app.db import Base, get_db
+from app.db import Base, ensure_schema_for_engine, get_db
 from app.main import app
 
 
@@ -55,6 +55,9 @@ def test_create_item_returns_saved_payload(client: TestClient) -> None:
     assert payload["title"] == "Budget ideas"
     assert payload["content"] == "Budget ideas\n\nCompare side hustles."
     assert payload["id"] > 0
+    assert payload["metadata"]["item_type"] == "pasted_text"
+    assert payload["metadata"]["word_count"] == 5
+    assert payload["entities"]["people"] == []
 
 
 def test_list_items_returns_newest_first(client: TestClient) -> None:
@@ -110,7 +113,7 @@ def test_create_url_item_fetches_and_stores_page_content(
           <body>
             <main>
               <h1>Example Article</h1>
-              <p>Useful extracted paragraph.</p>
+              <p>Useful extracted paragraph for OpenAI Inc in Louisiana on 2026-03-13.</p>
             </main>
           </body>
         </html>
@@ -134,7 +137,11 @@ def test_create_url_item_fetches_and_stores_page_content(
     assert payload["item_type"] == "url"
     assert payload["source_url"] == "https://example.com/article"
     assert payload["title"] == "Example Article"
-    assert "Useful extracted paragraph." in payload["content"]
+    assert "Useful extracted paragraph" in payload["content"]
+    assert payload["metadata"]["hostname"] == "example.com"
+    assert payload["entities"]["organizations"] == ["OpenAI Inc"]
+    assert payload["entities"]["places"] == ["Louisiana"]
+    assert payload["entities"]["dates"] == ["2026-03-13"]
 
 
 def test_create_url_item_returns_readable_error_for_unreachable_page(
@@ -180,6 +187,7 @@ def test_create_pdf_item_saves_text_based_pdf(client: TestClient) -> None:
     assert payload["title"] == "sample.pdf"
     assert "Sample PDF Title" in payload["content"]
     assert "Extracted PDF body text." in payload["content"]
+    assert payload["metadata"]["source_filename"] == "sample.pdf"
 
 
 def test_create_pdf_item_returns_readable_error_for_invalid_pdf(client: TestClient) -> None:
@@ -190,3 +198,38 @@ def test_create_pdf_item_returns_readable_error_for_invalid_pdf(client: TestClie
 
     assert response.status_code == 400
     assert response.json() == {"detail": "The uploaded file could not be read as a PDF."}
+
+
+def test_schema_upgrade_adds_phase_4_columns_for_existing_database(tmp_path: Path) -> None:
+    """Verify a pre-upgrade SQLite file gains the newer thin-slice columns safely."""
+    database_path = tmp_path / "legacy_garbage_collector.db"
+    legacy_engine = create_engine(
+        f"sqlite:///{database_path}", connect_args={"check_same_thread": False}
+    )
+
+    with legacy_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE items (
+                    id INTEGER PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+        )
+
+    ensure_schema_for_engine(legacy_engine)
+
+    inspector = inspect(legacy_engine)
+    columns = {column["name"] for column in inspector.get_columns("items")}
+
+    assert "item_type" in columns
+    assert "source_url" in columns
+    assert "source_filename" in columns
+    assert "stored_file_path" in columns
+    assert "metadata_json" in columns
+    assert "entities_json" in columns
