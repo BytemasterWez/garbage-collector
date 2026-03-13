@@ -4,6 +4,64 @@ Garbage Collector is a local-first personal intelligence system that ingests not
 
 The current implementation is a localhost web app used to prove the core engine in small, frozen phases before adding richer interaction layers.
 
+## What Garbage Collector Is
+
+Garbage Collector is the memory substrate in a larger multi-repo architecture.
+
+Its job is to:
+
+- ingest and retain material
+- expose retrieval and recall surfaces
+- provide searchable context to external capability layers
+- persist traces or history records when asked
+
+## What Garbage Collector Is Not
+
+Garbage Collector is not:
+
+- the kernelized capability layer
+- the judgment engine
+- the downstream action executor
+- a merged orchestration monolith
+
+## Role In The Larger Architecture
+
+```text
+Garbage Collector -> Jigsaw -> Arbiter -> Action
+```
+
+- Garbage Collector provides memory and recall
+- Jigsaw turns candidates into explicit evidence bundles
+- Arbiter judges whether action is permitted
+
+This repository remains independently useful as a standalone local-first memory system.
+
+## Public Interfaces
+
+- HTTP API in [`backend/app/main.py`](./backend/app/main.py)
+- retrieval and storage logic in [`backend/app/crud.py`](./backend/app/crud.py)
+- API schemas in [`backend/app/schemas.py`](./backend/app/schemas.py)
+- integration guide in [`INTEGRATION_SURFACES.md`](./INTEGRATION_SURFACES.md)
+
+## Standalone Use
+
+Garbage Collector can be used by itself as:
+
+- a local document and note library
+- a semantic retrieval tool
+- a grounded chat substrate
+- a context store for later systems
+
+## Integration Use
+
+Garbage Collector can also serve as the memory substrate for external systems such as Jigsaw.
+
+The intended boundary is explicit:
+
+- external systems call documented retrieval surfaces
+- external systems persist traces through documented storage surfaces
+- no capability or judgment logic is embedded here by default
+
 ## Current Build Scope
 
 The current live build includes:
@@ -21,6 +79,30 @@ The current live build includes:
 - keyword search
 
 This slice intentionally excludes desktop packaging, OCR-heavy PDF handling, autonomous agents, clustering, and images.
+
+## Proven Now
+
+- local-first ingestion and searchable storage work
+- semantic retrieval works on the current corpus scale
+- the repo can stand alone as a usable memory system
+- Jigsaw can consume Garbage Collector through thin adapters without requiring a merged codebase
+
+## Not Yet Proven
+
+- first-class case/outcome-oriented memory semantics
+- a dedicated trace-ingestion API for external decision systems
+- production-scale vector retrieval
+- multi-system governance or deployment contracts
+
+## How This Fits Into The Larger Architecture
+
+Garbage Collector should remain the memory substrate only.
+
+It should not absorb:
+
+- Jigsaw’s kernel chain responsibilities
+- Arbiter’s judgment responsibilities
+- hidden orchestration logic across repos
 
 ## What This Proves
 
