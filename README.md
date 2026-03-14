@@ -74,6 +74,20 @@ The intended boundary is explicit:
 - external systems persist traces through documented storage surfaces
 - no capability or judgment logic is embedded here by default
 
+## Canonical Contract Source
+
+`kernel.v1` is canonically defined in the standalone `kernel-contracts` repo.
+
+Garbage Collector keeps local contract assets for engine validation, but those copies are pinned snapshots, not the authoritative origin. Current alignment target:
+
+- `kernel-contracts` `0.1.0`
+
+Drift policy:
+
+- contract changes originate in `kernel-contracts` first
+- Garbage Collector pulls those changes in deliberately afterward
+- local schema or fixture edits here should not redefine `kernel.v1`
+
 ## Current Build Scope
 
 The current live build includes:
